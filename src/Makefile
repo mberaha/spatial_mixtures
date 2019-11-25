@@ -1,31 +1,55 @@
-SHELL := /bin/bash
 PROTO_DIR := ./protos
 
 CXX = g++
-CFLAGS = -g -Wall -Wextra $(shell root-config --cflags)
-LDLIBS = $(shell pkg-config --libs protobuf)
-LDFLAGS = -g -lpthread 
+CFLAGS = \
+	-std=c++1y \
+	-g  -I/usr/include/eigen3	\
+	-I../lib/math \
+	-I../lib/math/lib/boost_1.69.0/  \
+	-I../lib/math/lib/sundials_4.1.0/include  \
+	-I../lib/math/lib/tbb_2019_U8/include  \
+	-D_REENTRANT $(shell root-config --cflags)
+LDLIBS = \
+ 	$(shell pkg-config --libs protobuf) -L../lib/math/lib/tbb \
+	-ltbb -Wl,-rpath,"../lib/math/lib/tbb" 
+LDFLAGS = -g -lpthread -D_REENTRANT
 
-PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cc)
+PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 SPIKES_SRCS = $(wildcard spikes/*.cpp)
-SRCS = $(PROTO_SRCS) $(SPIKES_SRCS)
 
-OBJS1 = $(subst .cc,.o, $(SRCS))
-OBJS = $(subst .cpp,.o, $(OBJS1))
+SRCS = $(PROTO_SRCS)
+OBJS = $(subst .cpp,.o, $(SRCS))
 
-all: compile_protos; test_protos
+info:
+	@echo " Info..."
+	@echo " SOURCES = $(SRCS)"
+	@echo " OBJECTS = $(OBJS)"
+	@echo " EXECS = $(EXECS)"
 
-test_protos: $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_protos $(OBJS)  $(LDLIBS)
+all: compile_protos test_protos.out test_stan.out
+
+test_protos.out: test_protos.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_protos.out $(OBJS) test_protos.o  $(LDLIBS)
+
+test_protos.o:
+	$(CXX) $(CFLAGS) -c spikes/test_protos.cpp -o test_protos.o
+
+test_stan.out: test_stan.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_stan.out $(OBJS) test_stan.o  $(LDLIBS)
+
+test_stan.o:
+	$(CXX) $(CFLAGS) -c spikes/test_stan.cpp -o test_stan.o
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
-%.o : %.cc
-	$(CXX) $(CFLAGS) -c $< -o $@
+-include $(dep)
+
+%.d: %.c
+	$(CXX) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
 
 clean:
-	rm $(OBJS)
+	rm $(OBJS) test_stan.o test_protos.o
 
 distclean: clean
 
@@ -33,6 +57,9 @@ compile_protos:
 	@ for filename in $(PROTO_DIR)/*.proto; do \
 		protoc --proto_path=$(PROTO_DIR) --python_out=$(PROTO_DIR)/py/ $$filename; \
 		protoc --proto_path=$(PROTO_DIR) --cpp_out=$(PROTO_DIR)/cpp/ $$filename; \
+	done
+	@ for filename in protos/cpp/*.cc; do \
+	    mv -- "$$filename" "$${filename%.cc}.cpp"; \
 	done
 
 	touch $(PROTO_DIR)/py/__init__.py

@@ -51,5 +51,5 @@ int main() {
         states[i].PrintDebugString();
     }
 
-
+    return 1;
 }

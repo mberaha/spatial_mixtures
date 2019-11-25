@@ -4,6 +4,7 @@ message UnivariateMixtureAtom {
   double mean = 1;
   double stdev = 2;
 }
+
 message UnivariateMixtureState {
     int32 num_components = 1;
     repeated double weights = 2;
