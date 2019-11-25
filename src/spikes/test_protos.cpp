@@ -8,6 +8,9 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/util/delimited_message_util.h>
 #include <fstream>
+#include <Eigen/Dense>
+#include "../protos/cpp/eigen.pb.h"
+#include <cstring>
 
 using namespace google::protobuf;
 using namespace google::protobuf::io;
@@ -36,7 +39,7 @@ std::vector<UnivariateMixtureState> readFromFIle(const std::string& filename) {
         while (std::getline(infile, line)) {
             UnivariateMixtureState state;
             state.ParseFromString(line);
-            std::cout << state.DebugString() << std::endl;
+            // std::cout << state.DebugString() << std::endl;
             out.push_back(state);
         }
     } else {
@@ -64,6 +67,7 @@ int main() {
         states.push_back(curr);
     }
 
+
     saveToFile(states, "/home/mario/PhD/spatial_lda/src/chains.dat");
 
     std::vector<UnivariateMixtureState> restored = readFromFIle(
@@ -71,9 +75,22 @@ int main() {
 
     std::cout << "Restored" << std::endl;
     for (int i=0; i < restored.size(); i++) {
-        std::cout << "##### State number " << i << std::endl;
-        restored[i].PrintDebugString();
+        // std::cout << "##### State number " << i << std::endl;
+        // restored[i].PrintDebugString();
     }
+
+    Eigen::MatrixXd M(3,3);
+    M << 1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0 ;
+    std::cout<<M<<std::endl;
+
+    EigenMatrix protomat;
+    protomat.set_rows(3);
+    protomat.set_cols(3);
+    protomat.PrintDebugString();
+
+    *protomat.mutable_data() = {M.data(), M.data() + M.size()};
+
+    protomat.PrintDebugString();
 
     std::cout << "Bella lì" << std::endl;
     return 1;

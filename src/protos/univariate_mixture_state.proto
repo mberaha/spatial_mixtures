@@ -9,14 +9,14 @@ message UnivariateMixtureAtom {
 
 message UnivariateMixtureState {
     int32 num_components = 1;
-    repeated double weights = 2;
+    repeated double weights = 2 [packed=true];
     repeated UnivariateMixtureAtom atoms = 3;
 }
 
 message UnivariateState {
 
   message GroupWeights {
-    repeated double weights = 1;
+    repeated double weights = 1 [packed=true];
   }
 
   int32 num_components = 1;
