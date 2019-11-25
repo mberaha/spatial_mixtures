@@ -1,6 +1,20 @@
-# Setup
+# Requirements
 
-First of all, install the protocol buffer libary following the [instructions](https://github.com/protocolbuffers/protobuf/tree/master/src)
+First of all, install the protocol buffer library following the [instructions](https://github.com/protocolbuffers/protobuf/tree/master/src)
+
+[GSL](https://www.gnu.org/software/gsl/)
+For linux distros it should suffice to run
+```shell
+  sudo apt-get install libgsl-dev
+```
+
+[2to3]()
+```shell
+  sudo apt-get install 2to3
+  sudo apt-get install python3-lib2to3
+  sudo apt-get install python3-toolz
+```
+# Setup
 
 After cloning the repository, update the submodules via
 

@@ -4,8 +4,9 @@ PG_DIR := ../lib/polyagamma
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
-	-g  -I/usr/include/eigen3	\
+	-g \
 	-I../lib/math \
+	-I/usr/include/eigen3/ \
 	-I../lib/math/lib/boost_1.69.0/  \
 	-I../lib/math/lib/sundials_4.1.0/include  \
 	-I../lib/math/lib/tbb_2019_U8/include  \
@@ -13,8 +14,8 @@ CFLAGS = \
 	-D_REENTRANT $(shell root-config --cflags)
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L../lib/math/lib/tbb \
-	-lgsl -lgslcblas -ltbb -Wl,-rpath,"../lib/math/lib/tbb"
-LDFLAGS = -g -lpthread -D_REENTRANT
+	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"../lib/math/lib/tbb"
+LDFLAGS = -g -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)

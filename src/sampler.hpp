@@ -1,9 +1,13 @@
 #ifndef SRC_SAMPLER_HPP
 #define SRC_SAMPLER_HPP
 
+#include <random>
 #include <vector>
 #include "collector.hpp"
-#include "protos/cpp/univariate_mixture_state.pb.h""
+#include "protos/cpp/univariate_mixture_state.pb.h"
+#include "PolyaGammaHybrid.h"
+
+unsigned long int seed = 25112019;
 
 class Sampler {
  protected:
@@ -25,6 +29,9 @@ class Sampler {
      Eigen::MatrixXd Sigma;
 
      Collector<UnivariateMixtureState>* collector;
+
+     PolyaGammaHybridDouble pg_rng(seed);
+     std::mt19937_64 rng;
 
  public:
      Sampler(
