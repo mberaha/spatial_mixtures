@@ -1,15 +1,17 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/util/json_util.h>
+// #include <google/protobuf/text_format.h>
+// #include <google/protobuf/util/json_util.h>
 #include "../protos/cpp/univariate_mixture_state.pb.h"
 
 using namespace google::protobuf;
 
 int main() {
-    UnivariateMixtureState state;
+    std::cout << "ciao" << std::endl;
     std::string s;
+
+    UnivariateMixtureState state;
     state.set_num_components(1);
 
     UnivariateMixtureAtom* atom;
@@ -25,8 +27,9 @@ int main() {
     atom->set_mean(-3.0);
     atom->set_stdev(0.5);
 
+    std::cout << "a" << std::endl;
     state.PrintDebugString();
-
+    std::cout << "b" << std::endl;
     std::cout << "Number of atoms: " << state.atoms_size() << std::endl;
     for (int i=0; i < state.atoms_size(); i++) {
         std::cout << "Atom #" << i << "; mean:" << state.atoms()[i].mean() << std::endl;
@@ -46,10 +49,10 @@ int main() {
         states.push_back(curr);
     }
 
-    for (int i = 0; i < 10; i++) {
-        std::cout << "##### State number " << i << std::endl;
-        states[i].PrintDebugString();
-    }
+    // for (int i = 0; i < 10; i++) {
+    //     std::cout << "##### State number " << i << std::endl;
+    //     states[i].PrintDebugString();
+    // }
 
     return 1;
 }
