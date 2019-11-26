@@ -11,8 +11,6 @@
 
 class SpatialMixtureSampler {
  protected:
-     unsigned long int seed = 25112019;
-
      // data
      int numGroups;
      std::vector<int> samplesPerGroup;
@@ -37,13 +35,16 @@ class SpatialMixtureSampler {
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
 
-     // PolyaGammaHybridDouble pg_rng(seed);
-     std::mt19937_64 rng{seed};
+     unsigned long seed = 25112019;
+     PolyaGammaHybridDouble* pg_rng;
+     std::mt19937_64 rng{25112019};
 
  public:
      SpatialMixtureSampler(const std::vector<std::vector<double>> &_data);
 
-    ~SpatialMixtureSampler() {}
+    ~SpatialMixtureSampler() {
+        delete(pg_rng);
+    }
 
     void init();
 

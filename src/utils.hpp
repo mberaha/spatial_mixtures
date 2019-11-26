@@ -3,7 +3,6 @@
 
 #include <Eigen/Dense>
 
-
 Eigen::VectorXd alr(Eigen::VectorXd x) {
     int D = x.size();
     Eigen::VectorXd out = x.head(D-1);

@@ -12,6 +12,7 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     }
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
+    pg_rng = new PolyaGammaHybridDouble(seed);
 }
 
 void SpatialMixtureSampler::init() {
