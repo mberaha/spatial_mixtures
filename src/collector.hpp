@@ -37,6 +37,7 @@ class Collector {
          if (in_memory) {
              chains.push_back(state);
          } else {
+             std::string s;
              fout.open(filename, std::ios::out | std::ios::app);
              if (fout.fail())
                 throw std::ios_base::failure(std::strerror(errno));
@@ -44,14 +45,15 @@ class Collector {
             fout.exceptions(
                 fout.exceptions() | std::ios::failbit | std::ifstream::badbit);
 
-            fout << state.SerializeToString() << std::endl;
-            fout.close();
+            state.SerializeToString(&s);
+            fout << s << std::endl;
          }
      }
 
      void saveToFile(std::string fname) {
          // Writes the whole chunk
          fout.open(fname, std::ios::out);
+         std::string s;
          if (fout.fail())
             throw std::ios_base::failure(std::strerror(errno));
 
@@ -59,7 +61,8 @@ class Collector {
             fout.exceptions() | std::ios::failbit | std::ifstream::badbit);
 
          for (T state: chains) {
-             fout << state.SerializeToString() << std::endl;
+             state.SerializeToString(&s);
+             fout << s << std::endl;
          }
 
         fout.close();
