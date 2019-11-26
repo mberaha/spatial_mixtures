@@ -65,6 +65,12 @@ test_normal_gamma.out: test_normal_gamma.o $(OBJS)
 test_normal_gamma.o:
 	$(CXX) $(CFLAGS) -c spikes/test_normal_gamma.cpp -o test_normal_gamma.o
 
+test_utils.out: test_utils.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_utils.out $(OBJS) test_utils.o  $(LDLIBS)
+
+test_utils.o:
+	$(CXX) $(CFLAGS) -c spikes/test_utils.cpp -o test_utils.o
+
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
