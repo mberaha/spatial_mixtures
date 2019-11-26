@@ -6,41 +6,51 @@
 #include "collector.hpp"
 #include "protos/cpp/univariate_mixture_state.pb.h"
 #include "PolyaGammaHybrid.h"
+#include <stan/math.hpp>
 
-unsigned long int seed = 25112019;
 
-class Sampler {
+class SpatialMixtureSampler {
  protected:
+     unsigned long int seed = 25112019;
+
      // data
      int numGroups;
-     int samplesPerGroup;
+     std::vector<int> samplesPerGroup;
      std::vector<std::vector<double>> data;
+     int numdata;
 
      // mixtures
      int numComponents;
      std::vector<double> means;
      std::vector<double> stddevs;
 
-     std::vector<std::vector<double>> weights; // one set of weights per location
-     std::vector<std::vector<double>> transformed_weights;
+     std::vector<Eigen::VectorXd> weights; // one set of weights per location
+     std::vector<Eigen::VectorXd> transformed_weights;
+
+     std::vector<std::vector<int>> cluster_allocs;
 
      // MCAR
      double rho;
      Eigen::MatrixXd Sigma;
+     Eigen::MatrixXi W;
 
-     Collector<UnivariateMixtureState>* collector;
+     // HyperParams for NormalGamma
+     double priorMean, priorA, priorB, priorLambda;
 
-     PolyaGammaHybridDouble pg_rng(seed);
-     std::mt19937_64 rng;
+     // PolyaGammaHybridDouble pg_rng(seed);
+     std::mt19937_64 rng{seed};
 
  public:
-     Sampler(
-        std::vector<std::vector<double>> data,
-        Collector<UnivariateMixtureState>* collector);
+     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data);
 
-    ~Sampler() {}
+    ~SpatialMixtureSampler() {}
 
-    void sample();
+    void init();
+
+    void sample() {
+        sampleAtoms();
+        sampleAllocations();
+    }
 
     void sampleAtoms();
 
@@ -53,6 +63,14 @@ class Sampler {
     void sampleSigma();
 
     void sampleHyperParams();
-}
+
+    void sampleNumComponents();
+
+    void saveState(Collector<UnivariateState>* collector);
+
+    void printDebugString();
+
+    std::vector<double> _normalGammaUpdate(std::vector<double> data);
+};
 
 #endif // SRC_SAMPLER_HPP
