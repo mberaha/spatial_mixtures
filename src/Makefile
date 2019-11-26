@@ -20,9 +20,12 @@ LDFLAGS = -g -D_REENTRANT
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
 SPIKES_SRCS = $(wildcard spikes/*.cpp)
+OUR_SRCS = $(wildcard *.cpp)
 
-SRCS = $(PROTO_SRCS) $(PG_SRCS)
+SRCS = $(PROTO_SRCS) $(PG_SRCS) $(OUR_SRCS)
 OBJS = $(subst .cpp,.o, $(SRCS))
+
+SPIKES_EXECS = $(subst .cpp,.out, $(SPIKES_SRCS))
 
 info:
 	@echo " Info..."
@@ -30,7 +33,7 @@ info:
 	@echo " OBJECTS = $(OBJS)"
 	@echo " EXECS = $(EXECS)"
 
-all: compile_protos test_protos.out test_stan.out test_pg.out
+all: compile_protos test_protos.out test_stan.out test_pg.out test_sampler.out test_normal_gamma.out
 
 test_protos.out: test_protos.o $(OBJS)
 	$(CXX) $(LDFLAGS) -o test_protos.out $(OBJS) test_protos.o  $(LDLIBS)
@@ -49,6 +52,18 @@ test_pg.out: test_pg.o $(OBJS)
 
 test_pg.o:
 	$(CXX) $(CFLAGS) -c spikes/test_pg.cpp -o test_pg.o
+
+test_sampler.out: test_sampler.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_sampler.out $(OBJS) test_sampler.o  $(LDLIBS)
+
+test_sampler.o:
+	$(CXX) $(CFLAGS) -c spikes/test_sampler.cpp -o test_sampler.o
+
+test_normal_gamma.out: test_normal_gamma.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_normal_gamma.out $(OBJS) test_normal_gamma.o  $(LDLIBS)
+
+test_normal_gamma.o:
+	$(CXX) $(CFLAGS) -c spikes/test_normal_gamma.cpp -o test_normal_gamma.o
 
 
 %.o : %.cpp

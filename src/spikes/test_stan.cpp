@@ -16,5 +16,7 @@ int main() {
           << normalMat
           << std::endl;
 
+    double x =  stan::math::normal_rng(0.0, 1.0, rng);
+    std::cout << "x = " << x << std::endl;
     return 1;
 }
