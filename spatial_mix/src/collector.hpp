@@ -1,7 +1,7 @@
 #ifndef SRC_COLLECTOR_HPP
 #define SRC_COLLECTOR_HPP
 
-#include <vector>
+#include <deque>
 #include <list>
 #include <fstream>
 #include <google/protobuf/io/zero_copy_stream.h>
@@ -18,7 +18,7 @@ class Collector {
  protected:
      bool in_memory;
      std::string filename;
-     std::list<T> chains;
+     std::deque<T> chains;
      std::ofstream fout;
 
  public:
@@ -28,7 +28,7 @@ class Collector {
 
      Collector(int max_num_iter) {
          in_memory = true;
-         chains.reserve(max_num_iter);
+         // chains.reserve(max_num_iter);
      }
 
      ~Collector() {}
@@ -50,7 +50,12 @@ class Collector {
          }
      }
 
+     T get(int iternum) {
+         return chains[iternum];
+     }
+
      void saveToFile(std::string fname) {
+         std::cout << "saving to file" << std::endl;
          // Writes the whole chunk
          fout.open(fname, std::ios::out);
          std::string s;
@@ -77,6 +82,8 @@ class Collector {
         while (std::getline(infile, line)) {
             T state;
             state.ParseFromString(line);
+            std::cout << "State" << std::endl;
+            state.PrintDebugString();
             chains.push_back(state);
         }
      }

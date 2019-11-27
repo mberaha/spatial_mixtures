@@ -1,20 +1,22 @@
-PROTO_DIR := ./protos
-PG_DIR := ../lib/polyagamma
+ROOT_DIR := ../..
+PG_DIR := $(ROOT_DIR)/lib/polyagamma
+PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
+STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
 
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
 	-g \
-	-I../lib/math \
-	-I/usr/include/eigen3/ \
-	-I../lib/math/lib/boost_1.69.0/  \
-	-I../lib/math/lib/sundials_4.1.0/include  \
-	-I../lib/math/lib/tbb_2019_U8/include  \
-	-I ../lib/polyagamma -I ../lib/polyagamma/include \
+	-I$(STAN_ROOT_DIR) \
+	-I /usr/include/eigen3/ \
+	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
+	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
+	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
+	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
 	-D_REENTRANT $(shell root-config --cflags)
 LDLIBS = \
- 	$(shell pkg-config --libs protobuf) -L../lib/math/lib/tbb \
-	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"../lib/math/lib/tbb"
+ 	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
+	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
 LDFLAGS = -g -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
@@ -26,12 +28,14 @@ SRCS = $(PROTO_SRCS) $(PG_SRCS) $(OUR_SRCS)
 OBJS = $(subst .cpp,.o, $(SRCS))
 
 SPIKES_EXECS = $(subst .cpp,.out, $(SPIKES_SRCS))
+SPIKES_OBJS =  $(subst .cpp,.o, $(SPIKES_SRCS))
 
 info:
 	@echo " Info..."
 	@echo " SOURCES = $(SRCS)"
 	@echo " OBJECTS = $(OBJS)"
 	@echo " EXECS = $(EXECS)"
+	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
 all: compile_protos test_protos.out test_stan.out test_pg.out test_sampler.out test_normal_gamma.out
 
@@ -71,6 +75,12 @@ test_utils.out: test_utils.o $(OBJS)
 test_utils.o:
 	$(CXX) $(CFLAGS) -c spikes/test_utils.cpp -o test_utils.o
 
+test_serialization.out: test_serialization.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o test_serialization.out $(OBJS) test_serialization.o  $(LDLIBS)
+
+test_serialization.o:
+	$(CXX) $(CFLAGS) -c spikes/test_serialization.cpp -o test_serialization.o
+
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
@@ -81,7 +91,7 @@ test_utils.o:
 	$(CXX) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
 
 clean:
-	rm $(OBJS) test_stan.o test_protos.o
+	rm $(OBJS) $(SPIKES_OBJS)
 
 distclean: clean
 
@@ -94,6 +104,7 @@ compile_protos:
 	    mv -- "$$filename" "$${filename%.cc}.cpp"; \
 	done
 
+	touch $(PROTO_DIR)/__init__.py
 	touch $(PROTO_DIR)/py/__init__.py
 
 	2to3 --output-dir=$(PROTO_DIR)/py/ -W -n $(PROTO_DIR)/py/

@@ -3,13 +3,13 @@
 #include <string>
 #include <google/protobuf/text_format.h>
 // #include <google/protobuf/util/json_util.h>
-#include "../protos/cpp/univariate_mixture_state.pb.h"
+#include "univariate_mixture_state.pb.h"
 #include <google/protobuf/io/zero_copy_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/util/delimited_message_util.h>
 #include <fstream>
 #include <Eigen/Dense>
-#include "../protos/cpp/eigen.pb.h"
+#include "eigen.pb.h"
 #include <cstring>
 
 using namespace google::protobuf;

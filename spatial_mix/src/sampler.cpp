@@ -95,6 +95,17 @@ void SpatialMixtureSampler::sampleAllocations() {
     }
 }
 
+// void SpatialMixtureSampler::sampleWeights() {
+//     for (int i=0; i < numGroups; i++)
+//         transformed_weights[i] = inv_alr(weights[i]);
+//
+//     for (int i=0; i < numGroups; i++) {
+//         for (int j=0; j < numComponents; j++) {
+//
+//         }
+//     }
+// }
+
 void SpatialMixtureSampler::saveState(Collector<UnivariateState>* collector) {
     // First transform the state into a proto
     UnivariateState state;
