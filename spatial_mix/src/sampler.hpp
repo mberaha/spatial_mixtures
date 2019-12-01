@@ -25,13 +25,14 @@ class SpatialMixtureSampler {
 
      std::vector<Eigen::VectorXd> weights; // one set of weights per location
      std::vector<Eigen::VectorXd> transformed_weights;
-
      std::vector<std::vector<int>> cluster_allocs;
 
      // MCAR
      double rho;
      Eigen::MatrixXd Sigma;
      Eigen::MatrixXi W;
+
+     std::vector<Eigen::MatrixXd> inv_sigma_h;
 
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
@@ -92,6 +93,8 @@ class SpatialMixtureSampler {
     void sampleNumComponents();
 
     void saveState(Collector<UnivariateState>* collector);
+
+    UnivariateState getStateAsProto();
 
     void printDebugString();
 

@@ -23,7 +23,7 @@ void SpatialMixtureSampler::init() {
     priorB = 2.0;
     priorLambda = 10.0;
     rho = 0.9;
-    numComponents = 10;
+    numComponents = 2;
 
     Sigma = Eigen::MatrixXd::Identity(numComponents, numComponents);
 
@@ -107,7 +107,10 @@ void SpatialMixtureSampler::sampleAllocations() {
 // }
 
 void SpatialMixtureSampler::saveState(Collector<UnivariateState>* collector) {
-    // First transform the state into a proto
+    collector->collect(getStateAsProto());
+}
+
+UnivariateState SpatialMixtureSampler::getStateAsProto() {
     UnivariateState state;
     state.set_num_components(numComponents);
     for (int i=0; i < numGroups; i++) {
@@ -129,9 +132,7 @@ void SpatialMixtureSampler::saveState(Collector<UnivariateState>* collector) {
     state.mutable_sigma()->set_cols(Sigma.cols());
     *state.mutable_sigma()->mutable_data() = {
         Sigma.data(), Sigma.data() + Sigma.size()};
-
-    // Then save it
-    collector->collect(state);
+    return state;
 }
 
 std::vector<double> SpatialMixtureSampler::_normalGammaUpdate(std::vector<double> data) {

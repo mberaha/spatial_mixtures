@@ -11,7 +11,7 @@ int main() {
     std::cout << "Beginning" << std::endl;
     std::mt19937_64 rng;
     int numGroups = 2;
-    int numSamples = 50;
+    int numSamples = 10;
     std::cout << "numSamples: " << numSamples << std::endl;
     std::vector<std::vector<double>> data(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -34,7 +34,8 @@ int main() {
         std::cout << "\n\n";
     }
 
-    Collector<UnivariateState> collector(1000);
+    std::deque<UnivariateState> chains;
+    // Collector<UnivariateState> collector(1000);
 
     SpatialMixtureSampler spSampler(data);
     spSampler.init();
@@ -43,25 +44,24 @@ int main() {
         spSampler.sample();
     }
 
-    for (int i=0; i < 1000; i++) {
+    for (int i=0; i < 100; i++) {
         spSampler.sample();
-        if (remainder(i, 10) == 0)
-            spSampler.saveState(&collector);
+        if (i % 10 == 0) {
+            std::cout << "Saving state" << std::endl;
+            chains.push_back(spSampler.getStateAsProto());
+        }
     }
 
     // spSampler.printDebugString();
-    std::cout << "Calling collector.saveToFile" << std::endl;
-    collector.saveToFile("chains.dat");
+    writeManyToFile(chains, "chains_now.dat");
     std::cout << "Done" << std::endl;
 
 
-    Collector<UnivariateState> collector2(1000);
-    collector2.loadFromFile("chains.dat");
+    std::deque<UnivariateState> restored;
+    restored = readManyFromFile<UnivariateState>("chains_now.dat");
 
     std::cout << "******** RESTORED ********" << std::endl;
-    UnivariateState state = collector2.get(1);
-    std::cout << "State: " << std::endl;
-    std::cout << state.num_components() << std::endl;
+    UnivariateState state = restored[2];
     state.PrintDebugString();
 
     return 1;

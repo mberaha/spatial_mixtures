@@ -39,15 +39,28 @@ def writeDelimitedTo(message, stream):
 def readDelimitedFrom(MessageType, stream):
     raw_varint32 = readRawVarint32(stream)
     message = None
-
     if raw_varint32:
         size = getSize(raw_varint32)
 
         data = stream.read(size)
         if len(data) < size:
-            raise Exception("Unexpected end of file")
+            return
+        try:
+            message = MessageType()
+            message.ParseFromString(data)
+            return message
+        except Exception as e:
+            return
 
-        message = MessageType()
-        message.ParseFromString(data)
 
-    return message
+def loadChains(filename):
+    out = []
+    with open(filename, "rb") as fp:
+        while True:
+            msg = readDelimitedFrom(UnivariateState, fp)
+            if msg:
+                out.append(msg)
+            else:
+                break
+
+    return out
