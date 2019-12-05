@@ -12,8 +12,8 @@ int main() {
     std::cout << "a" << std::endl;
 
     std::cout << "x: " << x.transpose() << std::endl;
-    std::cout << "alr(x): " << alr(x).transpose() << std::endl;
-    std::cout << "x: " << inv_alr(alr(x)).transpose() << std::endl;
+    std::cout << "alr(x): " << utils::Alr(x).transpose() << std::endl;
+    std::cout << "x: " << utils::InvAlr(utils::Alr(x)).transpose() << std::endl;
 
     return 1;
 }

@@ -2,6 +2,8 @@ ROOT_DIR := ../..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
 STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
+SRC_DIR := .
+SPIKES_DIR := $(SRC_DIR)/spikes
 
 CXX = g++
 CFLAGS = \
@@ -21,8 +23,8 @@ LDFLAGS = -g -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
-SPIKES_SRCS = $(wildcard spikes/*.cpp)
-OUR_SRCS = $(wildcard *.cpp)
+SPIKES_SRCS = $(wildcard $(SPIKES_DIR)/*.cpp)
+OUR_SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 
 SRCS = $(PROTO_SRCS) $(PG_SRCS) $(OUR_SRCS)
 OBJS = $(subst .cpp,.o, $(SRCS))
@@ -37,50 +39,13 @@ info:
 	@echo " EXECS = $(EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos test_protos.out test_stan.out test_pg.out test_sampler.out test_normal_gamma.out
+all: $(SPIKES_EXECS)
 
-test_protos.out: test_protos.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_protos.out $(OBJS) test_protos.o  $(LDLIBS)
+$(SPIKES_EXECS): %.out: %.o
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
 
-test_protos.o:
-	$(CXX) $(CFLAGS) -c spikes/test_protos.cpp -o test_protos.o
-
-test_stan.out: test_stan.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_stan.out $(OBJS) test_stan.o  $(LDLIBS)
-
-test_stan.o:
-	$(CXX) $(CFLAGS) -c spikes/test_stan.cpp -o test_stan.o
-
-test_pg.out: test_pg.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_pg.out $(OBJS) test_pg.o  $(LDLIBS)
-
-test_pg.o:
-	$(CXX) $(CFLAGS) -c spikes/test_pg.cpp -o test_pg.o
-
-test_sampler.out: test_sampler.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_sampler.out $(OBJS) test_sampler.o  $(LDLIBS)
-
-test_sampler.o:
-	$(CXX) $(CFLAGS) -c spikes/test_sampler.cpp -o test_sampler.o
-
-test_normal_gamma.out: test_normal_gamma.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_normal_gamma.out $(OBJS) test_normal_gamma.o  $(LDLIBS)
-
-test_normal_gamma.o:
-	$(CXX) $(CFLAGS) -c spikes/test_normal_gamma.cpp -o test_normal_gamma.o
-
-test_utils.out: test_utils.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_utils.out $(OBJS) test_utils.o  $(LDLIBS)
-
-test_utils.o:
-	$(CXX) $(CFLAGS) -c spikes/test_utils.cpp -o test_utils.o
-
-test_serialization.out: test_serialization.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o test_serialization.out $(OBJS) test_serialization.o  $(LDLIBS)
-
-test_serialization.o:
-	$(CXX) $(CFLAGS) -c spikes/test_serialization.cpp -o test_serialization.o
-
+$(SPIKES_OBJS): %.o: %.cpp
+		$(CXX) $(CFLAGS) -c $< -o $@
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
