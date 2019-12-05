@@ -1,8 +1,8 @@
-ROOT_DIR := ../..
+ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
 STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
-SRC_DIR := .
+SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 
 CXX = g++
@@ -34,18 +34,29 @@ SPIKES_OBJS =  $(subst .cpp,.o, $(SPIKES_SRCS))
 
 info:
 	@echo " Info..."
+	@echo " ROOT_DIR  = $(ROOT_DIR)"
+	@echo " PROTO_DIR = $(PROTO_DIR)"
+	@echo " SRC_DIR = $(SRC_DIR)"
+	@echo " SPIKES_DIR = $(SPIKES_DIR)"
 	@echo " SOURCES = $(SRCS)"
 	@echo " OBJECTS = $(OBJS)"
-	@echo " EXECS = $(EXECS)"
+	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
 all: $(SPIKES_EXECS)
+# all: $(SPIKES_EXECS) run_from_file.out
 
-$(SPIKES_EXECS): %.out: %.o
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
+$(SPIKES_EXECS): %.out: %.o $(OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
 
 $(SPIKES_OBJS): %.o: %.cpp
 		$(CXX) $(CFLAGS) -c $< -o $@
+
+run_from_file.out: run_from_file.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o run_from_file.out $(OBJS) run_from_file.o  $(LDLIBS)
+
+run_from_file.o:
+	$(CXX) $(CFLAGS) -c run_from_file.cpp -o run_from_file.o
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
