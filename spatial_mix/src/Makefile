@@ -61,11 +61,13 @@ clean:
 distclean: clean
 
 compile_protos:
+	@ mkdir -p $(PROTO_DIR)/cpp;
+	@ mkdir -p $(PROTO_DIR)/py;
 	@ for filename in $(PROTO_DIR)/*.proto; do \
 		protoc --proto_path=$(PROTO_DIR) --python_out=$(PROTO_DIR)/py/ $$filename; \
 		protoc --proto_path=$(PROTO_DIR) --cpp_out=$(PROTO_DIR)/cpp/ $$filename; \
 	done
-	@ for filename in protos/cpp/*.cc; do \
+	@ for filename in $(PROTO_DIR)/cpp/*.cc; do \
 	    mv -- "$$filename" "$${filename%.cc}.cpp"; \
 	done
 
