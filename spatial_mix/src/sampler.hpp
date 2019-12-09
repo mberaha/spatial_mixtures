@@ -1,6 +1,7 @@
 #ifndef SRC_SAMPLER_HPP
 #define SRC_SAMPLER_HPP
 
+#include <algorithm>
 #include <random>
 #include <vector>
 #include "collector.hpp"
@@ -23,17 +24,17 @@ class SpatialMixtureSampler {
      std::vector<double> means;
      std::vector<double> stddevs;
 
-     std::vector<Eigen::VectorXd> weights; // one set of weights per location
-     std::vector<Eigen::VectorXd> transformed_weights;
+     Eigen::MatrixXd weights; // one set of weights per location
+     Eigen::MatrixXd transformed_weights;
      std::vector<std::vector<int>> cluster_allocs;
 
      // MCAR
      double rho;
      Eigen::MatrixXd Sigma;
-     Eigen::MatrixXi W;
+     Eigen::MatrixXd W;
 
-     std::vector<Eigen::MatrixXd> inv_sigma_h;
-
+     std::vector<Eigen::VectorXd> pippo;
+     std::vector<double> sigma_star_h;
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
 
@@ -43,7 +44,7 @@ class SpatialMixtureSampler {
 
  public:
      SpatialMixtureSampler(const std::vector<std::vector<double>> &_data,
-                           const Eigen::MatrixXi &W);
+                           const Eigen::MatrixXd &W);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);

@@ -10,20 +10,20 @@
 int main() {
     std::cout << "Beginning" << std::endl;
     std::mt19937_64 rng;
-    int numGroups = 2;
-    int numSamples = 10;
+    int numGroups = 5;
+    int numSamples = 100;
     std::cout << "numSamples: " << numSamples << std::endl;
     std::vector<std::vector<double>> data(numGroups);
     for (int i=0; i < numGroups; i++) {
         data[i].resize(numSamples);
         for (int j=0; j < numSamples; j++) {
             double u = stan::math::uniform_rng(0.0, 1.0, rng);
-            if (u < 0.3)
-                data[i][j] = stan::math::normal_rng(0.0, 1.0, rng);
-            else if(u < 0.6)
-                data[i][j] = stan::math::normal_rng(-2.0, 1.0, rng);
+            // if (u < 0.3)
+            //     data[i][j] = stan::math::normal_rng(0.0, 1.0, rng);
+            if(u < 0.5)
+                data[i][j] = stan::math::normal_rng(-10.0, 1.0, rng);
             else
-                data[i][j] = stan::math::normal_rng(5.0, 1.0, rng);
+                data[i][j] = stan::math::normal_rng(10.0, 1.0, rng);
         }
     }
 
@@ -36,15 +36,17 @@ int main() {
 
     std::deque<UnivariateState> chains;
     // Collector<UnivariateState> collector(1000);
-
-    SpatialMixtureSampler spSampler(data);
+    Eigen::MatrixXd W = Eigen::MatrixXd::Identity(numGroups, numGroups);
+    SpatialMixtureSampler spSampler(data, W);
+    std::cout<<"Init start"<<std::endl;
     spSampler.init();
-
+    std::cout<<"Init done"<<std::endl;
+    spSampler.printDebugString();
     for (int i=0; i < 1000; i++) {
         spSampler.sample();
     }
-
-    for (int i=0; i < 100; i++) {
+    spSampler.printDebugString();
+    for (int i=0; i < 1000; i++) {
         spSampler.sample();
         if (i % 10 == 0) {
             std::cout << "Saving state" << std::endl;
@@ -52,7 +54,7 @@ int main() {
         }
     }
 
-    // spSampler.printDebugString();
+    spSampler.printDebugString();
     writeManyToFile(chains, "chains_now.dat");
     std::cout << "Done" << std::endl;
 
