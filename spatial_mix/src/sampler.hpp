@@ -42,7 +42,8 @@ class SpatialMixtureSampler {
      std::mt19937_64 rng{25112019};
 
  public:
-     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data);
+     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data,
+                           const Eigen::MatrixXi &W);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);
@@ -57,7 +58,7 @@ class SpatialMixtureSampler {
 
     /*
      * We use a Normal kernel with conjugate Normal - Inverse Gamma
-     * base meausre, so the update of the atom is
+     * base measure, so the update of the atom is
      * Law(\mu, \sigma)_h \propto
      *  P_0(\mu, \sigma) \prod_{(i, j): s_{ij}=h} N(y_{ij} | \mu_h, \sigma_h)
      * That is a conjugate normal likelihood with normal inverse gamma prior
@@ -72,7 +73,7 @@ class SpatialMixtureSampler {
     void sampleWeights();
 
     /*
-     * This step requries a Metropolis Hastings step
+     * This step requires a Metropolis Hastings step
      */
     void sampleRho();
 

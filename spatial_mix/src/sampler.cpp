@@ -4,7 +4,8 @@
 using namespace stan::math;
 
 SpatialMixtureSampler::SpatialMixtureSampler(
-        const std::vector<std::vector<double>> &_data): data(_data) {
+        const std::vector<std::vector<double>> &_data,
+        const Eigen::MatrixXi &W): data(_data), W(W) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -55,6 +56,11 @@ void SpatialMixtureSampler::init() {
         for (int j=numComponents; j<samplesPerGroup[i]; j++)
             cluster_allocs[i][j] = stan::math::categorical_rng(weights[i], rng) - 1;
     }
+
+    // normalize W
+    for (int i=0; i<W.rows(); ++i){
+      W.row(i) *= rho/W.row(i).sum()
+    }
 }
 
 void SpatialMixtureSampler::sampleAtoms()  {
@@ -95,16 +101,28 @@ void SpatialMixtureSampler::sampleAllocations() {
     }
 }
 
-// void SpatialMixtureSampler::sampleWeights() {
-//     for (int i=0; i < numGroups; i++)
-//         transformed_weights[i] = inv_alr(weights[i]);
-//
-//     for (int i=0; i < numGroups; i++) {
-//         for (int j=0; j < numComponents; j++) {
-//
-//         }
-//     }
-// }
+void SpatialMixtureSampler::sampleWeights() {
+    for (int i=0; i < numGroups; i++)
+        transformed_weights[i] = utils::InvAlr(weights[i]);
+
+
+    for (int i=0; i < numGroups; i++) {
+        for (int h=0; h < numComponents; h++) {
+            /* we draw omega from a Polya-Gamma distribution
+               TODO The second parameter can be computed from the weights
+            */
+            omega = pg_rng.draw(samplesPerGroup[i],
+                                transformed_weights[i][h] -
+                                log(exp(transformed_weights[i]).sum() -
+                                    exp(transformed_weights[i][h])))
+            mu_ih = W.row(i)(j) x[j][h]
+            mu_ih = std::accumulate(
+                samplesPerGroup.begin(), samplesPerGroup.end(), 0);
+            x = stan::math::normal_rng(params[0], sigmaNorm, rng);
+
+        }
+    }
+}
 
 void SpatialMixtureSampler::saveState(Collector<UnivariateState>* collector) {
     collector->collect(getStateAsProto());
