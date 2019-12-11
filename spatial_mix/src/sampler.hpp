@@ -1,6 +1,7 @@
 #ifndef SRC_SAMPLER_HPP
 #define SRC_SAMPLER_HPP
 
+#include <algorithm>
 #include <random>
 #include <vector>
 #include "collector.hpp"
@@ -23,17 +24,17 @@ class SpatialMixtureSampler {
      std::vector<double> means;
      std::vector<double> stddevs;
 
-     std::vector<Eigen::VectorXd> weights; // one set of weights per location
-     std::vector<Eigen::VectorXd> transformed_weights;
+     Eigen::MatrixXd weights; // one set of weights per location
+     Eigen::MatrixXd transformed_weights;
      std::vector<std::vector<int>> cluster_allocs;
 
      // MCAR
      double rho;
      Eigen::MatrixXd Sigma;
-     Eigen::MatrixXi W;
+     Eigen::MatrixXd W;
 
-     std::vector<Eigen::MatrixXd> inv_sigma_h;
-
+     std::vector<Eigen::VectorXd> pippo;
+     std::vector<double> sigma_star_h;
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
 
@@ -42,7 +43,8 @@ class SpatialMixtureSampler {
      std::mt19937_64 rng{25112019};
 
  public:
-     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data);
+     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data,
+                           const Eigen::MatrixXd &W);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);
@@ -57,7 +59,7 @@ class SpatialMixtureSampler {
 
     /*
      * We use a Normal kernel with conjugate Normal - Inverse Gamma
-     * base meausre, so the update of the atom is
+     * base measure, so the update of the atom is
      * Law(\mu, \sigma)_h \propto
      *  P_0(\mu, \sigma) \prod_{(i, j): s_{ij}=h} N(y_{ij} | \mu_h, \sigma_h)
      * That is a conjugate normal likelihood with normal inverse gamma prior
@@ -72,7 +74,7 @@ class SpatialMixtureSampler {
     void sampleWeights();
 
     /*
-     * This step requries a Metropolis Hastings step
+     * This step requires a Metropolis Hastings step
      */
     void sampleRho();
 
