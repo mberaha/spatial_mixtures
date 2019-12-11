@@ -33,6 +33,10 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd Sigma;
      Eigen::MatrixXd W;
 
+     // prior for Sigma
+     double nu;
+     Eigen::MatrixXd V0;
+
      std::vector<Eigen::VectorXd> pippo;
      std::vector<double> sigma_star_h;
      // HyperParams for NormalGamma
@@ -55,6 +59,7 @@ class SpatialMixtureSampler {
     void sample() {
         sampleAtoms();
         sampleAllocations();
+        sampleSigma();
     }
 
     /*
@@ -86,6 +91,8 @@ class SpatialMixtureSampler {
      * \mu_i = \rho N^{-1} \sum{j \n N(i)} tw_j
      */
     void sampleSigma();
+
+    void _computeInvSigmaH();
 
     /*
      * Sampler the hyperparameters in the base measure P_0

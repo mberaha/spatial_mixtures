@@ -13,13 +13,14 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/util/delimited_message_util.h>
 
+#include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 template <typename T>
 bool writeManyToFile(std::deque<T> messages, std::string filename) {
-    int outfd = open(filename.c_str(), O_CREAT | O_WRONLY  | O_TRUNC);
+    int outfd = open(filename.c_str(), O_CREAT | O_RDWR  | O_TRUNC);
     google::protobuf::io::FileOutputStream fout(outfd);
     int cnt = 0;
     bool success;
@@ -42,6 +43,9 @@ bool writeManyToFile(std::deque<T> messages, std::string filename) {
 template <typename T>
 std::deque<T> readManyFromFile(std::string filename) {
     int infd = open(filename.c_str(), O_RDONLY);
+    if (infd == -1)
+        std::cout << "errno: " << strerror(errno) << std::endl;
+    std::cout << "infd: " << infd << std::endl;
 
     google::protobuf::io::FileInputStream fin(infd);
     bool keep = true;

@@ -10,7 +10,7 @@
 int main() {
     std::cout << "Beginning" << std::endl;
     std::mt19937_64 rng;
-    int numGroups = 5;
+    int numGroups = 3;
     int numSamples = 100;
     std::cout << "numSamples: " << numSamples << std::endl;
     std::vector<std::vector<double>> data(numGroups);
