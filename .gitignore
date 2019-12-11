@@ -1,6 +1,7 @@
 # protos
-src/protos/cpp/*
-src/protos/py/*
+*_pb2.py
+*.pb.h
+*.pb.cpp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
