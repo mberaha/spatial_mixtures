@@ -1,6 +1,6 @@
 #include <vector>
 #include <iostream>
-#include <stan/math.hpp>
+#include <stan/math/prim/mat.hpp>
 #include "../sampler.hpp"
 #include "../collector.hpp"
 #include <random>

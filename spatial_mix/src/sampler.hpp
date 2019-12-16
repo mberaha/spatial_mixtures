@@ -7,7 +7,7 @@
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
 #include "PolyaGammaHybrid.h"
-#include <stan/math.hpp>
+#include <stan/math/prim/mat.hpp>
 #include "utils.hpp"
 
 

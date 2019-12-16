@@ -1,5 +1,5 @@
 #include <vector>
-#include <stan/math.hpp>
+#include <stan/math/prim/mat.hpp>
 #include <numeric>
 #include <algorithm>
 #include <random>
