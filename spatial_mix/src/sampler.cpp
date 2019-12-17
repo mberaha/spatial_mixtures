@@ -24,7 +24,7 @@ void SpatialMixtureSampler::init() {
     priorB = 2.0;
     priorLambda = 0.1;
     rho = 0.99;
-    numComponents = 10;
+    numComponents = 4;
     nu = numComponents + 3;
     V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
 
@@ -181,10 +181,15 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
     for (int i=0; i < numGroups; i++) {
         UnivariateState::GroupParams* p;
         p = state.add_groupparams();
-        *p->mutable_weights() = {
-            weights.row(i).data(), weights.row(i).data() + numComponents};
+        Eigen::VectorXd w = weights.row(i);
+        // std::cout << "Weights: " << w.transpose() << std::endl;
+        *p->mutable_weights() = {w.data(),w.data() + numComponents};
         *p->mutable_cluster_allocs() = {
             cluster_allocs[i].begin(), cluster_allocs[i].end()};
+        // std::cout << "in proto: ";
+        // for (double w : p->weights())
+        //     std::cout << w << ", ";
+        // std::cout << std::endl;
     }
     for (int h=0; h < numComponents; h++) {
         UnivariateMixtureAtom* atom;
@@ -233,14 +238,13 @@ void SpatialMixtureSampler::printDebugString() {
         std::cout << n << ", ";
     std::cout << std::endl;
 
-    std::vector<std::vector<double>> datavec(numComponents); // one vector per component
-    for (int h=0; h < numComponents; h++)
-        datavec[h].reserve(numdata);
+    std::vector<std::vector<std::vector<double>>> datavecs(numGroups); // one vector per component
 
     for (int i=0; i < numGroups; i++) {
+        datavecs[i].resize(numComponents);
         for (int j=0; j < samplesPerGroup[i]; j++) {
             int comp = cluster_allocs[i][j];
-            datavec[comp].push_back(data[i][j]);
+            datavecs[i][comp].push_back(data[i][j]);
         }
     }
 
@@ -250,9 +254,12 @@ void SpatialMixtureSampler::printDebugString() {
         std::cout << "### Component #" << h << std::endl;
         std::cout << "##### Atom: mean=" << means[h] << ", sd=" << stddevs[h]
                   << " weights per group: " << weights.col(h).transpose() << std::endl;
-        // std::cout << "###### Data: ";
-        // for (double d: datavec[h])
-        //     std::cout << d << ", ";
-        std::cout << std::endl;
+        std::cout << "###### Data: ";
+        // for (int g = 0; g < numGroups; g++) {
+        // std::cout << "\n Group: " << g << ": ";
+        //     for (double d: datavecs[g][h])
+        //         std::cout << d << ", ";
+        //     std::cout << std::endl;
+        // }
     }
 }

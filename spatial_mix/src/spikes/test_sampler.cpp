@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <stan/math/prim/mat.hpp>
 #include "../sampler.hpp"
 #include "../collector.hpp"
@@ -18,14 +19,21 @@ int main() {
         data[i].resize(numSamples);
         for (int j=0; j < numSamples; j++) {
             double u = stan::math::uniform_rng(0.0, 1.0, rng);
-            // if (u < 0.3)
-            //     data[i][j] = stan::math::normal_rng(0.0, 1.0, rng);
             if(u < 0.5)
-                data[i][j] = stan::math::normal_rng(-10.0, 1.0, rng);
+                data[i][j] = stan::math::normal_rng(-2.5, 1.0, rng);
             else
-                data[i][j] = stan::math::normal_rng(10.0, 1.0, rng);
+                data[i][j] = stan::math::normal_rng(2.5, 1.0, rng);
         }
     }
+
+    std::ofstream outfile;
+    outfile.open("data.csv");
+    for (int i = 0; i < numGroups; i++) {
+        for (int j=0; j < numSamples; j++) {
+            outfile << i << "," << data[i][j] << std::endl;
+        }
+    }
+
 
     std::cout << "Initialized Data" << std::endl;
     for (int i=0; i < numGroups; i++) {
@@ -35,36 +43,34 @@ int main() {
     }
 
     std::deque<UnivariateState> chains;
-    // Collector<UnivariateState> collector(1000);
-    Eigen::MatrixXd W = Eigen::MatrixXd::Identity(numGroups, numGroups);
+    Eigen::MatrixXd W(3, 3);
+    W << 0, 1, 1, 1, 0, 1, 1, 1, 0;
+    // Eigen::MatrixXd W = Eigen::MatrixXd::Zero(3, 3);
     SpatialMixtureSampler spSampler(data, W);
     std::cout<<"Init start"<<std::endl;
     spSampler.init();
     std::cout<<"Init done"<<std::endl;
     spSampler.printDebugString();
-    for (int i=0; i < 1000; i++) {
+    for (int i=0; i < 5000; i++) {
         spSampler.sample();
     }
     spSampler.printDebugString();
-    for (int i=0; i < 1000; i++) {
+    for (int i=0; i < 10000; i++) {
         spSampler.sample();
-        if (i % 10 == 0) {
-            std::cout << "Saving state" << std::endl;
+        if ((i+1) % 10 == 0) {
             chains.push_back(spSampler.getStateAsProto());
         }
     }
 
     spSampler.printDebugString();
-    writeManyToFile(chains, "chains_now.dat");
+    writeManyToFile(chains, "chains_now2.dat");
     std::cout << "Done" << std::endl;
 
 
     std::deque<UnivariateState> restored;
-    restored = readManyFromFile<UnivariateState>("chains_now.dat");
+    restored = readManyFromFile<UnivariateState>("chains_now2.dat");
 
     std::cout << "******** RESTORED ********" << std::endl;
-    UnivariateState state = restored[2];
-    state.PrintDebugString();
 
     return 1;
 }
