@@ -84,6 +84,7 @@ void SpatialMixtureSampler::sampleAtoms()  {
     for (int h=0; h < numComponents; h++)
         datavec[h].reserve(numdata);
 
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             int comp = cluster_allocs[i][j];
@@ -91,6 +92,7 @@ void SpatialMixtureSampler::sampleAtoms()  {
         }
     }
 
+    #pragma omp parallel for
     for (int h=0; h < numComponents; h++) {
         std::vector<double> params = _normalGammaUpdate(datavec[h]);
         double tau = stan::math::gamma_rng(params[1], params[2], rng);
@@ -102,6 +104,7 @@ void SpatialMixtureSampler::sampleAtoms()  {
 }
 
 void SpatialMixtureSampler::sampleAllocations() {
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             double datum = data[i][j];
@@ -118,7 +121,6 @@ void SpatialMixtureSampler::sampleAllocations() {
 }
 
 void SpatialMixtureSampler::sampleWeights() {
-
     for (int i=0; i < numGroups; i++) {
         for (int h=0; h < numComponents; h++) {
             /* we draw omega from a Polya-Gamma distribution
@@ -129,8 +131,7 @@ void SpatialMixtureSampler::sampleWeights() {
                 - exp(transformed_weights(i, h)));
             double omega_ih = pg_rng->draw(
                 samplesPerGroup[i],
-                transformed_weights(i, h) - C_ih
-                );
+                transformed_weights(i, h) - C_ih);
 
             Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
             double mu_star_ih = mu_i[h] + pippo[h].dot(
@@ -187,6 +188,7 @@ void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
 
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
         Vn += (transformed_weights.row(i).transpose() - mu_i) *
@@ -204,12 +206,14 @@ void SpatialMixtureSampler::_computeInvSigmaH() {
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(
         numComponents - 2, numComponents - 2);
 
-    for(int h=0; h<numComponents-1;++h){
+    #pragma omp parallel for
+    for(int h=0; h < numComponents - 1; ++h){
         pippo[h] = utils::removeColumn(Sigma, h).row(h) *
                    utils::removeRowColumn(Sigma, h).llt().solve(I);
     }
 
-    for(int h=0; h<sigma_star_h.size();++h){
+    #pragma omp parallel for
+    for(int h=0; h < sigma_star_h.size(); ++h){
         double aux = pippo[h].dot(utils::removeRow(Sigma, h).col(h));
         sigma_star_h[h] = Sigma(h, h) - aux;
     }
