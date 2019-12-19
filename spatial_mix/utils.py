@@ -1,6 +1,7 @@
 import numpy as np
+import multiprocessing
 
-from google.protobuf.internal import encoder
+from functools import partial
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
 
@@ -28,22 +29,29 @@ def loadChains(filename, msgType=UnivariateState):
     return out
 
 
-def _estimateDensity(weights, atoms, xgrid):
+def estimateDensity(weights, atoms, xgrid):
     out = np.zeros(len(xgrid))
     for h, atom in enumerate(atoms):
         out += weights[h] * norm.pdf(xgrid, atom.mean, atom.stdev)
     return out
 
 
-def estimateDensities(chains, xgrid):
+def _aux(state, g, xgrid):
+    return estimateDensity(
+        state.groupParams[g].weights, state.atoms, xgrid)
+
+
+def estimateDensities(chains, xgrid, nproc=-1):
     numGroups = len(chains[0].groupParams)
     numIters = len(chains)
+    if nproc == -1:
+        nproc = multiprocessing.cpu_count() - 1
 
     out = []
     for g in range(numGroups):
         curr = np.zeros((numIters, len(xgrid)))
         for i in range(numIters):
-            curr[i, :] = _estimateDensity(
+            curr[i, :] = estimateDensity(
                 chains[i].groupParams[g].weights, chains[i].atoms, xgrid)
 
         out.append(curr)

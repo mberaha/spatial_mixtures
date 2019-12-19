@@ -72,5 +72,8 @@ int main() {
 
     std::cout << "******** RESTORED ********" << std::endl;
 
+    std::cout << "Acceptance rate for Rho: " <<
+        1.0 * spSampler.getNumAccepted() / (1.0 * 15000) << std::endl;
+
     return 1;
 }

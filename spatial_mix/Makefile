@@ -8,9 +8,9 @@ SPIKES_DIR := $(SRC_DIR)/spikes
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
-	-g \
+	-O3 \
 	-I$(STAN_ROOT_DIR) \
-	-I $(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
+	-I/usr/include/eigen3/ \
 	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
 	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
 	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
@@ -19,7 +19,7 @@ CFLAGS = \
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -g -D_REENTRANT
+LDFLAGS = -O3 -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
@@ -43,7 +43,7 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos $(SPIKES_EXECS)
+all: compile_protos run_from_file.out $(SPIKES_EXECS)
 # all: $(SPIKES_EXECS) run_from_file.out
 
 $(SPIKES_EXECS): %.out: %.o $(OBJS)
@@ -67,7 +67,7 @@ run_from_file.o:
 	$(CXX) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
 
 clean:
-	rm $(OBJS) $(SPIKES_OBJS)
+	rm $(OBJS) $(SPIKES_OBJS) run_from_file.o
 
 distclean: clean
 

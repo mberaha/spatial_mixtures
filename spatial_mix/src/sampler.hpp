@@ -18,6 +18,7 @@ class SpatialMixtureSampler {
      std::vector<int> samplesPerGroup;
      std::vector<std::vector<double>> data;
      int numdata;
+     Eigen::MatrixXd W_init;
 
      // mixtures
      int numComponents;
@@ -32,10 +33,16 @@ class SpatialMixtureSampler {
      double rho;
      Eigen::MatrixXd Sigma;
      Eigen::MatrixXd W;
+     Eigen::MatrixXd SigmaInv;
+     Eigen::MatrixXd F;
 
      // prior for Sigma
      double nu;
      Eigen::MatrixXd V0;
+
+     // prior for Rho
+     double alpha;
+     double beta;
 
      std::vector<Eigen::VectorXd> pippo;
      std::vector<double> sigma_star_h;
@@ -45,6 +52,9 @@ class SpatialMixtureSampler {
      unsigned long seed = 25112019;
      PolyaGammaHybridDouble* pg_rng;
      std::mt19937_64 rng{25112019};
+
+     // diagnostic for the MH sampler
+     int numAccepted = 0;
 
  public:
      SpatialMixtureSampler(const std::vector<std::vector<double>> &_data,
@@ -60,6 +70,7 @@ class SpatialMixtureSampler {
         sampleAtoms();
         sampleAllocations();
         sampleSigma();
+        sampleRho();
     }
 
     /*
@@ -108,6 +119,8 @@ class SpatialMixtureSampler {
     void printDebugString();
 
     std::vector<double> _normalGammaUpdate(std::vector<double> data);
+
+    const int& getNumAccepted() {return numAccepted;}
 };
 
 #endif // SRC_SAMPLER_HPP

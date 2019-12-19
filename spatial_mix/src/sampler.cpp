@@ -5,7 +5,7 @@ using namespace stan::math;
 
 SpatialMixtureSampler::SpatialMixtureSampler(
         const std::vector<std::vector<double>> &_data,
-        const Eigen::MatrixXd &W): data(_data), W(W) {
+        const Eigen::MatrixXd &W): data(_data), W_init(W) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -23,10 +23,12 @@ void SpatialMixtureSampler::init() {
     priorA = 2.0;
     priorB = 2.0;
     priorLambda = 0.1;
-    rho = 0.99;
-    numComponents = 4;
+    rho = 0.9;
+    numComponents = 15;
     nu = numComponents + 3;
     V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
+    alpha = 5;
+    beta = 5;
 
 
     // Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
@@ -59,9 +61,15 @@ void SpatialMixtureSampler::init() {
             cluster_allocs[i][j] = categorical_rng(weights.row(i), rng) - 1;
     }
 
+    W = W_init;
     // normalize W
-    for (int i=0; i<W.rows(); ++i){
+    for (int i=0; i < W.rows(); ++i){
       W.row(i) *= rho/W.row(i).sum();
+    }
+
+    F = Eigen::MatrixXd::Zero(numGroups, numGroups);
+    for (int i=0; i < numGroups; i++) {
+        F(i, i) = W_init.row(i).sum();
     }
 
     // compute inverses of sigma(-h,h))
@@ -142,6 +150,39 @@ void SpatialMixtureSampler::sampleWeights() {
     }
 }
 
+
+// We use a MH step with a truncated normal proposal
+void SpatialMixtureSampler::sampleRho() {
+    double curr = rho;
+    double sigma = 0.1;
+    double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1.0, rng);
+
+    // compute acceptance ratio
+    Eigen::MatrixXd rowVar = F - proposed * W_init;
+    Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
+    double num = stan::math::beta_lpdf(proposed, alpha, beta) +
+                 stan::math::matrix_normal_prec_lpdf(
+                    transformed_weights, meanMat, rowVar, SigmaInv) +
+                 utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1.0);
+
+    rowVar = F - curr * W_init;
+    double den = stan::math::beta_lpdf(curr, alpha, beta) +
+                 stan::math::matrix_normal_prec_lpdf(
+                    transformed_weights, meanMat, rowVar, SigmaInv) +
+                 utils::trunc_normal_lpdf(curr, proposed, sigma, 0.0, 1.0);
+
+    double arate = std::min(1.0, std::exp(num-den));
+    if (stan::math::uniform_rng(0.0, 1.0, rng) < arate) {
+        rho = proposed;
+        numAccepted += 1;
+        W = W_init;
+        // normalize W
+        for (int i=0; i < W.rows(); ++i){
+          W.row(i) *= rho/W.row(i).sum();
+        }
+    }
+}
+
 void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
@@ -157,6 +198,9 @@ void SpatialMixtureSampler::sampleSigma() {
 }
 
 void SpatialMixtureSampler::_computeInvSigmaH() {
+    SigmaInv = Sigma.llt().solve(Eigen::MatrixXd::Identity(
+        numComponents - 1, numComponents - 1));
+
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(
         numComponents - 2, numComponents - 2);
 

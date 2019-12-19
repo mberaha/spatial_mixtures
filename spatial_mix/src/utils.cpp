@@ -1,6 +1,30 @@
 #include "utils.hpp"
+#include <iostream>
 
 namespace utils {
+
+
+// generate from truncated normal by rejection sampling
+// !! might not be the best idea
+double trunc_normal_rng(
+        double mu, double sigma, double lower, double upper,
+        std::mt19937_64& rng) {
+    while (true) {
+        double val = stan::math::normal_rng(mu, sigma, rng);
+        if (val <= upper && val >= lower)
+            return val;
+            
+    }
+}
+
+double trunc_normal_lpdf(double x, double mu, double sigma, double lower, double upper) {
+    double out = stan::math::normal_lpdf(x, mu, sigma);
+    out -= stan::math::log_diff_exp(
+        stan::math::normal_lcdf(upper, mu, sigma),
+        stan::math::normal_lcdf(lower, mu, sigma));
+
+    return out;
+}
 
 Eigen::VectorXd Alr(Eigen::VectorXd x) {
     int D = x.size();
@@ -35,12 +59,14 @@ std::vector<std::vector<double>> readDataFromCSV(std::string filename) {
     while (std::getline(infile, line)) {
       std::istringstream iss(line);
       if (!(iss >> group >> delim >> datum) ) { break; }
-      out[group - 1].push_back(datum);
+      out[group].push_back(datum);
     }
 
     // maps are sorted
     int ngroups = out.rbegin()->first;
     bool startsFromZero = out.begin()->first == 0;
+    if (startsFromZero)
+        ngroups += 1;
 
     std::vector<std::vector<double>> data(ngroups);
     for (int g=0; g < ngroups; g++) {
@@ -54,6 +80,7 @@ std::vector<std::vector<double>> readDataFromCSV(std::string filename) {
 }
 
 Eigen::MatrixXd readMatrixFromCSV(std::string filename) {
+    std::cout << "readMatrixFromCSV" << std::endl;
     int MAXBUFSIZE = ((int) 1e6);
     int cols = 0, rows = 0;
     double buff[MAXBUFSIZE];
@@ -61,15 +88,19 @@ Eigen::MatrixXd readMatrixFromCSV(std::string filename) {
     // Read numbers from file into buffer.
     std::ifstream infile;
     infile.open(filename);
+    double d;
+    char delim;
     while (! infile.eof())
         {
         std::string line;
         getline(infile, line);
-
         int temp_cols = 0;
-        std::stringstream stream(line);
-        while(! stream.eof())
-            stream >> buff[cols*rows+temp_cols++];
+        std::istringstream stream(line);
+        while(! stream.eof()) {
+            stream >> d;
+            stream >> delim;
+            buff[cols*rows+temp_cols++] = d;
+        }
 
         if (temp_cols == 0)
             continue;

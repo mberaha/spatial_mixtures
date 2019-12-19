@@ -2,13 +2,21 @@
 #define SRC_UTILS_HPP
 
 #include <map>
+#include <random>
 #include <vector>
 #include <sstream>
 #include <string>
 #include <fstream>
 #include <Eigen/Dense>
+#include <stan/math/prim/mat.hpp>
 
 namespace utils {
+
+double trunc_normal_rng(
+    double mu, double sigma, double lower, double upper,
+    std::mt19937_64& rng);
+
+double trunc_normal_lpdf(double x, double mu, double sigma, double lower, double upper);
 
 Eigen::VectorXd Alr(Eigen::VectorXd x);
 
