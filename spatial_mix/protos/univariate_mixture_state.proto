@@ -25,3 +25,15 @@ message UnivariateState {
   double rho = 4;
   EigenMatrix Sigma = 5;
 }
+
+
+message HdpState {
+  message GroupParams {
+    repeated int32 cluster_size = 1 [packed=true];
+    repeated int32 cluster_allocs = 2 [packed=true];
+  }
+
+  int32 num_components = 1;
+  repeated UnivariateMixtureAtom atoms = 2;
+  repeated GroupParams groupParams = 3;
+}

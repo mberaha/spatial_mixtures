@@ -94,7 +94,8 @@ void SpatialMixtureSampler::sampleAtoms()  {
 
     #pragma omp parallel for
     for (int h=0; h < numComponents; h++) {
-        std::vector<double> params = _normalGammaUpdate(datavec[h]);
+        std::vector<double> params = utils::normalGammaUpdate(
+            datavec[h], priorMean, priorA, priorB, priorLambda);
         double tau = stan::math::gamma_rng(params[1], params[2], rng);
         double sigmaNorm = 1.0 / std::sqrt(tau * params[3]);
         double mu = stan::math::normal_rng(params[0], sigmaNorm, rng);
@@ -251,31 +252,6 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
     *state.mutable_sigma()->mutable_data() = {
         Sigma.data(), Sigma.data() + Sigma.size()};
     return state;
-}
-
-std::vector<double> SpatialMixtureSampler::_normalGammaUpdate(std::vector<double> data) {
-  double postMean, postA, postB, postLambda;
-  int n = data.size();
-  if (n == 0) {
-    return std::vector<double>{priorMean, priorA, priorB, priorLambda};
-  }
-
-  double sum = std::accumulate(std::begin(data), std::end(data), 0.0);
-  double ybar = sum / n;
-  postMean = (priorLambda * priorMean + sum) / (priorLambda + n);
-  postA = 1.0 * priorA + 1.0 * n / 2;
-
-  double ss = 0.0;
-  std::for_each(data.begin(), data.end(), [&ss, &ybar](double x) {
-    ss += (x - ybar) * (x - ybar);});
-
-  postB = (
-      priorB + 0.5 * ss +
-      0.5 * priorLambda / (n + priorLambda) * n *(ybar - priorMean) * (ybar - priorMean));
-
-  postLambda = priorLambda + n;
-
-  return std::vector<double>{postMean, postA, postB, postLambda};
 }
 
 void SpatialMixtureSampler::printDebugString() {

@@ -8,6 +8,7 @@
 #include "univariate_mixture_state.pb.h"
 #include "PolyaGammaHybrid.h"
 #include <stan/math/prim/mat.hpp>
+#include "mcmc_utils.hpp"
 #include "utils.hpp"
 
 
@@ -117,8 +118,6 @@ class SpatialMixtureSampler {
     UnivariateState getStateAsProto();
 
     void printDebugString();
-
-    std::vector<double> _normalGammaUpdate(std::vector<double> data);
 
     const int& getNumAccepted() {return numAccepted;}
 };
