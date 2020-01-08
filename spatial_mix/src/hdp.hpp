@@ -6,10 +6,8 @@
 #include <stan/math/prim/mat.hpp>
 
 #include "mcmc_utils.hpp"
-#include "stirling.hpp"
+#include "stirling_first.hpp"
 #include "univariate_mixture_state.pb.h"
-
-using utils::mystirling;
 
 class HdpSampler {
  protected:
@@ -47,13 +45,9 @@ class HdpSampler {
     void init();
 
     void sample() {
-        check();
         sampleAtoms();
-        check();
         sampleAllocations();
-        check();
         relabel();
-        check();
         sampleLatent();
         check();
     }

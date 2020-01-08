@@ -15,7 +15,7 @@ CFLAGS = \
 	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
 	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
 	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-	-D_REENTRANT $(shell root-config --cflags)
+	-D_REENTRANT
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"

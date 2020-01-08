@@ -7,8 +7,6 @@
 
 #include <vector>
 
-namespace utils {
-
 /*
  * Memoizer specific to the stirling numbers: instead of using
  * a map, employs a lower triangular matrix to gain efficiency.
@@ -55,7 +53,7 @@ class stirlingmemoizer {
 
 };
 
-unsigned long int mystirling(int n, int m);
+unsigned long int StirlingFirst(int n, int m);
 
 
 
@@ -68,15 +66,14 @@ unsigned long int stirling_(int n, int m) {
     else if (m > n)
       return 0;
     else
-      return mystirling(n-1, m-1) + (n-1) * mystirling(n-1, m);
+      return StirlingFirst(n-1, m-1) + (n-1) * StirlingFirst(n-1, m);
 }
 }
 
-unsigned long int mystirling(int n, int m) {
+unsigned long int StirlingFirst(int n, int m) {
   static stirlingmemoizer memo(stirling_);
   return memo(stirling_, n, m);
 }
 
-}
 
 #endif  // CPPMODEL_STIRLING_NUMBERS_HPP
