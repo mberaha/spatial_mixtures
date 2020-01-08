@@ -32,8 +32,8 @@ class HdpSampler {
     double alpha;
     double gamma;
 
-    unsigned long seed = 25112019;
-    std::mt19937_64 rng{25112019};
+    unsigned long seed = 8012020;
+    std::mt19937_64 rng{8012020};
 
  public:
     ~HdpSampler() = default;

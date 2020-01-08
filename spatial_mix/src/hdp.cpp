@@ -131,7 +131,7 @@ void HdpSampler::sampleLatent() {
             int numCustomers = sizes_from_rest[i][h];
             Eigen::VectorXd probas = Eigen::VectorXd::Zero(numCustomers);
             for (int m=0; m < numCustomers; m++) {
-                double s = 1.0 * StirlingFirst(numCustomers, m+1);
+                double s = 1.0 * stirling_first(numCustomers, m+1);
                 double gammas = std::exp(
                     std::lgamma(alpha * betas(h) -
                     std::lgamma(alpha * betas(h) + numCustomers)));
@@ -202,8 +202,10 @@ HdpState HdpSampler::getStateAsProto() {
     hypers.set_mu0(priorMean);
     hypers.set_a(priorA);
     hypers.set_b(priorB);
-    hypers.set_lambda(priorLambda);
+    hypers.set_lamb(priorLambda);
     state.mutable_hyper_params()->CopyFrom(hypers);
+    state.set_alpha(alpha);
+    state.set_gamma(gamma);
     return state;
 }
 
@@ -218,12 +220,12 @@ void HdpSampler::check() {
         }
     }
     assert(sizes_ == sizes);
-    std::cout << "numComponents: " << numComponents << std::endl;
+    // std::cout << "numComponents: " << numComponents << std::endl;
     for (int i=0; i < numGroups; i++) {
         std::vector<int> sizes_from_alloc(numComponents, 0);
-        std::cout << "Size: "<< sizes_from_alloc.size() << std::endl;
+        // std::cout << "Size: "<< sizes_from_alloc.size() << std::endl;
         for (int j=0; j < samplesPerGroup[i]; j++) {
-            std::cout << "Cluster alloc: " << cluster_allocs[i][j] << std::endl;
+            // std::cout << "Cluster alloc: " << cluster_allocs[i][j] << std::endl;
             sizes_from_alloc[cluster_allocs[i][j]] += 1;
         }
         assert(sizes_from_alloc == sizes_from_rest[i]);

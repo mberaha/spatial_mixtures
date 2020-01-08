@@ -53,9 +53,7 @@ class stirlingmemoizer {
 
 };
 
-unsigned long int StirlingFirst(int n, int m);
-
-
+unsigned long int stirling_first(int n, int m);
 
 namespace {
 unsigned long int stirling_(int n, int m) {
@@ -66,13 +64,8 @@ unsigned long int stirling_(int n, int m) {
     else if (m > n)
       return 0;
     else
-      return StirlingFirst(n-1, m-1) + (n-1) * StirlingFirst(n-1, m);
+      return stirling_first(n-1, m-1) + (n-1) * stirling_first(n-1, m);
 }
-}
-
-unsigned long int StirlingFirst(int n, int m) {
-  static stirlingmemoizer memo(stirling_);
-  return memo(stirling_, n, m);
 }
 
 
