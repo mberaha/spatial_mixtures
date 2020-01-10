@@ -13,7 +13,7 @@ double trunc_normal_rng(
         double val = stan::math::normal_rng(mu, sigma, rng);
         if (val <= upper && val >= lower)
             return val;
-            
+
     }
 }
 
@@ -39,8 +39,9 @@ Eigen::VectorXd InvAlr(Eigen::VectorXd x) {
     Eigen::VectorXd out(D);
     out.head(D - 1) = x;
     out(D - 1) = 0;
-    out = out.array().exp();
-    return out / out.sum();
+    double norm = stan::math::log_sum_exp(out);
+    out = (out.array() - norm).exp();
+    return out;
 }
 
 std::vector<std::vector<double>> readDataFromCSV(std::string filename) {
@@ -123,6 +124,16 @@ Eigen::MatrixXd readMatrixFromCSV(std::string filename) {
 
     return result;
 
+}
+
+Eigen::VectorXd removeElem(Eigen::VectorXd vec, unsigned int toRemove)
+{
+    unsigned int size = vec.size()-1;
+    if(toRemove < size)
+        vec.segment(toRemove, size - toRemove) = vec.segment(toRemove+1, size-toRemove);
+
+    vec.conservativeResize(size);
+    return vec;
 }
 
 Eigen::MatrixXd removeRow(Eigen::MatrixXd matrix, unsigned int rowToRemove)

@@ -32,16 +32,17 @@ def _aux(state, g, xgrid):
         state.groupParams[g].weights, state.atoms, xgrid)
 
 
-def estimateDensities(chains, xgrid, nproc=-1):
-
+def estimateDensities(chains, xgrids, nproc=-1):
     numGroups = len(chains[0].groupParams)
+    if not isinstance(xgrids, list):
+        xgrids = [xgrids] * numGroups
     numIters = len(chains)
     if nproc == -1:
         nproc = multiprocessing.cpu_count() - 1
 
     out = []
     for g in range(numGroups):
-        curr = np.zeros((numIters, len(xgrid)))
+        curr = np.zeros((numIters, len(xgrids[g])))
         for i in range(numIters):
             params = {
                 "alpha": chains[i].alpha,
@@ -51,7 +52,7 @@ def estimateDensities(chains, xgrid, nproc=-1):
                 "priorLambda": chains[i].hyper_params.lamb}
             curr[i, :] = estimateDensity(
                 chains[i].groupParams[g].cluster_size, chains[i].betas,
-                chains[i].atoms, params, xgrid)
+                chains[i].atoms, params, xgrids[g])
 
         out.append(curr)
     return out

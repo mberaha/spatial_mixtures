@@ -50,9 +50,9 @@ class SpatialMixtureSampler {
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
 
-     unsigned long seed = 25112019;
+     unsigned long seed = 213513435;
      PolyaGammaHybridDouble* pg_rng;
-     std::mt19937_64 rng{25112019};
+     std::mt19937_64 rng{213513435};
 
      // diagnostic for the MH sampler
      int numAccepted = 0;
@@ -67,13 +67,7 @@ class SpatialMixtureSampler {
 
     void init();
 
-    void sample() {
-        sampleAtoms();
-        sampleAllocations();
-        sampleSigma();
-        sampleRho();
-    }
-
+    void sample();
     /*
      * We use a Normal kernel with conjugate Normal - Inverse Gamma
      * base measure, so the update of the atom is

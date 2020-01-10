@@ -9,6 +9,7 @@ CXX = g++
 CFLAGS = \
 	-std=c++1y \
 	-g \
+	-fopenmp \
 	-I$(STAN_ROOT_DIR) \
 	-I $(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
 	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
@@ -19,7 +20,7 @@ CFLAGS = \
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -g -D_REENTRANT
+LDFLAGS = -g -fopenmp -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
@@ -43,7 +44,7 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos run_from_file.out $(SPIKES_EXECS)
+all: compile_protos run_from_file.out run_hdp_from_file.out $(SPIKES_EXECS)
 # all: $(SPIKES_EXECS) run_from_file.out
 
 $(SPIKES_EXECS): %.out: %.o $(OBJS)
@@ -57,6 +58,12 @@ run_from_file.out: run_from_file.o $(OBJS)
 
 run_from_file.o:
 	$(CXX) $(CFLAGS) -c run_from_file.cpp -o run_from_file.o
+
+run_hdp_from_file.out: run_hdp_from_file.o $(OBJS)
+	$(CXX) $(LDFLAGS) -o run_hdp_from_file.out $(OBJS) run_hdp_from_file.o  $(LDLIBS)
+
+run_hdp_from_file.o:
+	$(CXX) $(CFLAGS) -c run_hdp_from_file.cpp -o run_hdp_from_file.o
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@

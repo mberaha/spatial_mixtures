@@ -26,6 +26,8 @@ std::vector<std::vector<double>> readDataFromCSV(std::string filename);
 
 Eigen::MatrixXd readMatrixFromCSV(std::string filename);
 
+Eigen::VectorXd removeElem(Eigen::VectorXd vec, unsigned int toRemove);
+
 Eigen::MatrixXd removeRow(Eigen::MatrixXd matrix, unsigned int rowToRemove);
 
 Eigen::MatrixXd removeColumn(Eigen::MatrixXd matrix, unsigned int colToRemove);

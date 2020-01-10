@@ -23,16 +23,16 @@ void SpatialMixtureSampler::init() {
     priorA = 2.0;
     priorB = 2.0;
     priorLambda = 0.1;
-    rho = 0.9;
-    numComponents = 15;
-    nu = numComponents + 3;
+    rho = 1.0;
+    numComponents = 3;
+    nu = numComponents + 2;
     V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     alpha = 5;
     beta = 5;
 
 
-    // Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
-    Sigma = inv_wishart_rng(nu, V0, rng);
+    Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
+    // Sigma = inv_wishart_rng(nu, V0, rng);
 
     // Now proper initialization
     means.resize(numComponents);
@@ -49,9 +49,11 @@ void SpatialMixtureSampler::init() {
         stddevs[h] = uniform_rng(0.5, 2.0, rng);
     }
 
-    for (int i=0; i < numGroups; i++)
+    for (int i=0; i < numGroups; i++) {
         weights.row(i) = dirichlet_rng(
             Eigen::VectorXd::Ones(numComponents), rng);
+        transformed_weights.row(i) = utils::Alr(weights.row(i));
+    }
 
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < numComponents; j++)
@@ -79,6 +81,15 @@ void SpatialMixtureSampler::init() {
     _computeInvSigmaH();
 }
 
+void SpatialMixtureSampler::sample()  {
+    sampleAtoms();
+    sampleAllocations();
+    sampleWeights();
+    // sampleSigma();
+    // sampleRho();
+}
+
+
 void SpatialMixtureSampler::sampleAtoms()  {
     std::vector<std::vector<double>> datavec(numComponents); // one vector per component
     for (int h=0; h < numComponents; h++)
@@ -105,51 +116,78 @@ void SpatialMixtureSampler::sampleAtoms()  {
 }
 
 void SpatialMixtureSampler::sampleAllocations() {
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             double datum = data[i][j];
             Eigen::VectorXd logProbas(numComponents);
             for (int h=0; h < numComponents; h++) {
                 logProbas(h) = \
-                    std::log(weights(i, h)) + normal_lpdf(
+                    std::log(weights(i, h) + 1e-6) + normal_lpdf(
                         datum, means[h], stddevs[h]);
             }
-            cluster_allocs[i][j] = categorical_logit_rng(
-                logProbas, rng) - 1;
+            Eigen::VectorXd probas = logProbas.array().exp();
+            probas /= probas.sum();
+            cluster_allocs[i][j] = categorical_rng(
+                probas, rng) - 1;
         }
     }
 }
 
 void SpatialMixtureSampler::sampleWeights() {
     for (int i=0; i < numGroups; i++) {
-        for (int h=0; h < numComponents; h++) {
+        std::cout << "GROUP: " << i+1 << std::endl;
+        for (int h=0; h < numComponents - 1; h++) {
             /* we draw omega from a Polya-Gamma distribution
                TODO The second parameter can be computed from the weights
             */
             // TODO log sum exp
-            double C_ih = log(exp(transformed_weights.row(i)).sum()
-                - exp(transformed_weights(i, h)));
+            Eigen::VectorXd weightsForCih = utils::removeElem(
+                transformed_weights.row(i), h);
+            double C_ih = stan::math::log_sum_exp(weightsForCih);
+
+            // double C_ih = log(
+            //     exp(transformed_weights.row(i)).sum() -
+            //     exp(transformed_weights(i, h)));
             double omega_ih = pg_rng->draw(
                 samplesPerGroup[i],
                 transformed_weights(i, h) - C_ih);
 
             Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
+
             double mu_star_ih = mu_i[h] + pippo[h].dot(
-                utils::removeColumn(transformed_weights, h).row(i) -
-                utils::removeRow(mu_i, h));
-            double sigma_hat_ih = (1.0/sigma_star_h[h] + omega_ih);
+                utils::removeElem(transformed_weights.row(i), h) -
+                utils::removeElem(mu_i, h));
+
+            double sigma_hat_ih = 1.0 / sigma_star_h[h] + omega_ih;
             int N_ih = std::count(cluster_allocs[i].begin(),
                                   cluster_allocs[i].end(), h);
-            double mu_hat_ih = (mu_star_ih/sigma_star_h[h] + N_ih -
-                0.5 * samplesPerGroup[i] + omega_ih*C_ih)/(sigma_hat_ih);
+            double mu_hat_ih = (
+                mu_star_ih / sigma_star_h[h] + N_ih -
+                0.5 * samplesPerGroup[i] + omega_ih*C_ih) / (sigma_hat_ih);
 
-            transformed_weights(i, h) =
-                normal_rng(mu_hat_ih, std::sqrt(sigma_hat_ih), rng);
+            transformed_weights(i, h) = normal_rng(
+                mu_hat_ih, std::sqrt(sigma_hat_ih), rng);
 
+            std::cout << "mu_hat_ih: " << mu_hat_ih << ", sigma_hat_ih: "
+                      << sigma_hat_ih << ", transformed_weight: "
+                      << transformed_weights(i, h) << ", C_ih: " << C_ih
+                      << ", mu_star: " << mu_star_ih
+                      << ", mu_ih: " << mu_i[h]
+                      << ", sigma_star: " << sigma_star_h[h]
+                      << ", omega_ih: " << omega_ih << std::endl;
+
+            // assert(transformed_weights.array().isNaN().any());
         }
         weights.row(i) = utils::InvAlr(transformed_weights.row(i));
+        // assert( weights.row(i).sum() == 1);
+        // std::cout << "transformed_weights: "<< transformed_weights.row(i) << std::endl;
+        std::cout <<  std::endl;
+        assert( ((weights.array() == weights.array())).all());
+
     }
+    for (int i=0; i < numGroups; i++)
+        transformed_weights.row(i) = utils::Alr(weights.row(i));
 }
 
 
@@ -231,7 +269,9 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
         UnivariateState::GroupParams* p;
         p = state.add_groupparams();
         Eigen::VectorXd w = weights.row(i);
-        // std::cout << "Weights: " << w.transpose() << std::endl;
+        if (i == 0)
+            std::cout << "Weights: " << w.transpose() << std::endl;
+
         *p->mutable_weights() = {w.data(),w.data() + numComponents};
         *p->mutable_cluster_allocs() = {
             cluster_allocs[i].begin(), cluster_allocs[i].end()};
@@ -285,5 +325,6 @@ void SpatialMixtureSampler::printDebugString() {
         //         std::cout << d << ", ";
         //     std::cout << std::endl;
         // }
+        std::cout << std::endl;
     }
 }

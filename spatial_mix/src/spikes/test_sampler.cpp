@@ -51,11 +51,12 @@ int main() {
     spSampler.init();
     std::cout<<"Init done"<<std::endl;
     spSampler.printDebugString();
-    for (int i=0; i < 5000; i++) {
+
+    for (int i=0; i < 500; i++) {
         spSampler.sample();
     }
     spSampler.printDebugString();
-    for (int i=0; i < 10000; i++) {
+    for (int i=0; i < 5; i++) {
         spSampler.sample();
         if ((i+1) % 10 == 0) {
             chains.push_back(spSampler.getStateAsProto());
