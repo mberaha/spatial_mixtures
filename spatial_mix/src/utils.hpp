@@ -18,9 +18,9 @@ double trunc_normal_rng(
 
 double trunc_normal_lpdf(double x, double mu, double sigma, double lower, double upper);
 
-Eigen::VectorXd Alr(Eigen::VectorXd x);
+Eigen::VectorXd Alr(Eigen::VectorXd x, bool pad_zero = false);
 
-Eigen::VectorXd InvAlr(Eigen::VectorXd x);
+Eigen::VectorXd InvAlr(Eigen::VectorXd x, bool padded_zero = false);
 
 std::vector<std::vector<double>> readDataFromCSV(std::string filename);
 

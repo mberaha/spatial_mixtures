@@ -26,18 +26,30 @@ double trunc_normal_lpdf(double x, double mu, double sigma, double lower, double
     return out;
 }
 
-Eigen::VectorXd Alr(Eigen::VectorXd x) {
+Eigen::VectorXd Alr(Eigen::VectorXd x, bool pad_zero) {
     int D = x.size();
     Eigen::VectorXd out = x.head(D-1);
     out /= x(D-1);
     out = out.array().log();
-    return out;
+    if (pad_zero) {
+        Eigen::VectorXd out2 = Eigen::VectorXd::Zero(D);
+        out2.head(D -1) = out;
+        return out2;
+    } else {
+        return out;
+    }
 }
 
-Eigen::VectorXd InvAlr(Eigen::VectorXd x) {
-    int D = x.size() + 1;
+Eigen::VectorXd InvAlr(Eigen::VectorXd x, bool padded_zero) {
+    int D;
+
+    if (padded_zero)
+        D = x.size();
+    else
+        D = x.size() + 1;
+
     Eigen::VectorXd out(D);
-    out.head(D - 1) = x;
+    out.head(D - 1) = x.head(D-1);
     out(D - 1) = 0;
     double norm = stan::math::log_sum_exp(out);
     out = (out.array() - norm).exp();
