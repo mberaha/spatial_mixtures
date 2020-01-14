@@ -149,17 +149,12 @@ void SpatialMixtureSampler::sampleWeights() {
         for(int j=0; j<samplesPerGroup[i]; j++)
             cluster_sizes[cluster_allocs[i][j]] += 1;
         for (int h=0; h < numComponents - 1; h++) {
-            /* we draw omega from a Polya-Gamma distribution
-               TODO The second parameter can be computed from the weights
-            */
-            // TODO log sum exp
+            /*
+             * we draw omega from a Polya-Gamma distribution
+             */
             Eigen::VectorXd weightsForCih = utils::removeElem(
                 transformed_weights.row(i), h);
             double C_ih = stan::math::log_sum_exp(weightsForCih);
-
-            // double C_ih = log(
-            //     exp(transformed_weights.row(i)).sum() -
-            //     exp(transformed_weights(i, h)));
 
             double omega_ih = pg_rng->draw(
                 samplesPerGroup[i],
@@ -182,22 +177,8 @@ void SpatialMixtureSampler::sampleWeights() {
             transformed_weights(i, h) = normal_rng(
                 mu_hat_ih, std::sqrt(sigma_hat_ih), rng);
 
-            // std::cout << "mu_hat_ih: " << mu_hat_ih << ", sigma_hat_ih: "
-            //           << sigma_hat_ih << ", transformed_weight: "
-            //           << transformed_weights(i, h) << ", C_ih: " << C_ih
-            //           << ", mu_star: " << mu_star_ih
-            //           << ", mu_ih: " << mu_i[h]
-            //           << ", sigma_star: " << sigma_star_h[h]
-            //           << ", omega_ih: " << omega_ih
-            //           << ", Nih: "<< N_ih<< std::endl;
-
-            // assert(transformed_weights.array().isNaN().any());
         }
         weights.row(i) = utils::InvAlr(transformed_weights.row(i), true);
-        // assert( weights.row(i).sum() == 1);
-        // std::cout << "transformed_weights: "<< transformed_weights.row(i) << std::endl;
-        // std::cout <<  std::endl;
-        assert( ((weights.array() == weights.array())).all());
 
     }
     for (int i=0; i < numGroups; i++)
@@ -291,10 +272,7 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
         *p->mutable_weights() = {w.data(),w.data() + numComponents};
         *p->mutable_cluster_allocs() = {
             cluster_allocs[i].begin(), cluster_allocs[i].end()};
-        // std::cout << "in proto: ";
-        // for (double w : p->weights())
-        //     std::cout << w << ", ";
-        // std::cout << std::endl;
+
     }
     for (int h=0; h < numComponents; h++) {
         UnivariateMixtureAtom* atom;
@@ -334,13 +312,6 @@ void SpatialMixtureSampler::printDebugString() {
         std::cout << "### Component #" << h << std::endl;
         std::cout << "##### Atom: mean=" << means[h] << ", sd=" << stddevs[h]
                   << " weights per group: " << weights.col(h).transpose() << std::endl;
-        std::cout << "###### Data: ";
-        // for (int g = 0; g < numGroups; g++) {
-        // std::cout << "\n Group: " << g << ": ";
-        //     for (double d: datavecs[g][h])
-        //         std::cout << d << ", ";
-        //     std::cout << std::endl;
-        // }
         std::cout << std::endl;
     }
 }
