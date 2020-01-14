@@ -23,7 +23,7 @@ void SpatialMixtureSampler::init() {
     priorA = 2.0;
     priorB = 2.0;
     priorLambda = 0.1;
-    rho = 1.0;
+    rho = 0.9;
     numComponents = 3;
     nu = numComponents + 2;
     V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
@@ -71,15 +71,6 @@ void SpatialMixtureSampler::init() {
             cluster_allocs[i][j] = categorical_rng(weights.row(i), rng) - 1;
     }
 
-    // std::cout << "Cluster allocs: "<< std::endl;
-    // for(int i=0; i< numGroups; ++i){
-    //   std::cout << "GROUP: " << i+1 << std::endl;
-    //   for (int h=0; h<samplesPerGroup[i]; h++){
-    //       std::cout << cluster_allocs[i][h] << " ";
-    //   }
-    //   std::cout<<std::endl;
-    // }
-
     W = W_init;
     // normalize W
     for (int i=0; i < W.rows(); ++i){
@@ -103,8 +94,8 @@ void SpatialMixtureSampler::sample()  {
     sampleAtoms();
     sampleAllocations();
     sampleWeights();
-    // sampleSigma();
-    // sampleRho();
+    sampleSigma();
+    sampleRho();
 }
 
 
@@ -134,7 +125,7 @@ void SpatialMixtureSampler::sampleAtoms()  {
 }
 
 void SpatialMixtureSampler::sampleAllocations() {
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             double datum = data[i][j];
@@ -205,7 +196,7 @@ void SpatialMixtureSampler::sampleWeights() {
         weights.row(i) = utils::InvAlr(transformed_weights.row(i), true);
         // assert( weights.row(i).sum() == 1);
         // std::cout << "transformed_weights: "<< transformed_weights.row(i) << std::endl;
-        std::cout <<  std::endl;
+        // std::cout <<  std::endl;
         assert( ((weights.array() == weights.array())).all());
 
     }
@@ -225,13 +216,15 @@ void SpatialMixtureSampler::sampleRho() {
     Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
     double num = stan::math::beta_lpdf(proposed, alpha, beta) +
                  stan::math::matrix_normal_prec_lpdf(
-                    transformed_weights, meanMat, rowVar, SigmaInv) +
+                    utils::removeColumn(transformed_weights, numComponents -1),
+                    meanMat, rowVar, SigmaInv) +
                  utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1.0);
 
     rowVar = F - curr * W_init;
     double den = stan::math::beta_lpdf(curr, alpha, beta) +
                  stan::math::matrix_normal_prec_lpdf(
-                    transformed_weights, meanMat, rowVar, SigmaInv) +
+                    utils::removeColumn(transformed_weights, numComponents -1),
+                    meanMat, rowVar, SigmaInv) +
                  utils::trunc_normal_lpdf(curr, proposed, sigma, 0.0, 1.0);
 
     double arate = std::min(1.0, std::exp(num-den));
@@ -252,9 +245,11 @@ void SpatialMixtureSampler::sampleSigma() {
 
     #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
-        Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
-        Vn += (transformed_weights.row(i).transpose() - mu_i) *
-              (transformed_weights.row(i).transpose() - mu_i).transpose();
+        Eigen::VectorXd mu_i = W.row(i) * utils::removeColumn(
+            transformed_weights, numComponents-1);
+        Eigen::VectorXd wtilde_i = utils::removeElem(
+            transformed_weights.row(i), numComponents-1);
+        Vn += (wtilde_i - mu_i) * (wtilde_i - mu_i).transpose();
     }
 
     Sigma = inv_wishart_rng(nu_n, Vn, rng);
@@ -292,8 +287,6 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
         UnivariateState::GroupParams* p;
         p = state.add_groupparams();
         Eigen::VectorXd w = weights.row(i);
-        if (i == 0)
-            std::cout << "Weights: " << w.transpose() << std::endl;
 
         *p->mutable_weights() = {w.data(),w.data() + numComponents};
         *p->mutable_cluster_allocs() = {
