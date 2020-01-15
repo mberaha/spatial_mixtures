@@ -53,8 +53,6 @@ int main(int ac, char* av[]) {
   SamplerParams params = loadTextProto<SamplerParams>(
     "resources/sampler_params.asciipb");
 
-    std::cout << "PARAMS: " << std::endl << params.DebugString() << std::endl;
-
   SpatialMixtureSampler spSampler(params, data, W);
   spSampler.init();
 
