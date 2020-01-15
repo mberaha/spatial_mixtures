@@ -4,8 +4,10 @@
 #include <stan/math/prim/mat.hpp>
 #include "../sampler.hpp"
 #include "../collector.hpp"
+#include "../recordio.hpp"
 #include <random>
 #include "univariate_mixture_state.pb.h"
+#include "sampler_params.pb.h"
 
 
 int main() {
@@ -46,7 +48,13 @@ int main() {
     Eigen::MatrixXd W(3, 3);
     W << 0, 1, 1, 1, 0, 1, 1, 1, 0;
     // Eigen::MatrixXd W = Eigen::MatrixXd::Zero(3, 3);
-    SpatialMixtureSampler spSampler(data, W);
+
+    SamplerParams params = loadTextProto<SamplerParams>(
+        "/home/mario/PhD/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
+
+    std::cout << params.DebugString() << std::endl;
+
+    SpatialMixtureSampler spSampler(params, data, W);
     std::cout<<"Init start"<<std::endl;
     spSampler.init();
     std::cout<<"Init done"<<std::endl;

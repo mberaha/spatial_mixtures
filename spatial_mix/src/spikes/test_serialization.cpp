@@ -1,5 +1,6 @@
 #include "../recordio.hpp"
-#include "univariate_mixture_state.pb.h"
+#include "../../protos/cpp/univariate_mixture_state.pb.h"
+#include "../../protos/cpp/sampler_params.pb.h"
 #include <deque>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/util/delimited_message_util.h>
@@ -8,6 +9,12 @@
 #include <unistd.h>
 
 int main() {
+    SamplerParams params;
+
+    params = loadTextProto<SamplerParams>(
+        "/home/mario/PhD/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
+    std::cout << params.DebugString() << std::endl;
+
     std::deque<UnivariateMixtureState> states;
     UnivariateMixtureAtom* atom;
     for (int i = 0; i < 5; i++) {

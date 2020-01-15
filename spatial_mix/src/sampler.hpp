@@ -6,6 +6,7 @@
 #include <vector>
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
+#include "sampler_params.pb.h"
 #include "PolyaGammaHybrid.h"
 #include <stan/math/prim/mat.hpp>
 #include "mcmc_utils.hpp"
@@ -14,6 +15,9 @@
 
 class SpatialMixtureSampler {
  protected:
+     // params
+     SamplerParams params;
+
      // data
      int numGroups;
      std::vector<int> samplesPerGroup;
@@ -58,8 +62,10 @@ class SpatialMixtureSampler {
      int numAccepted = 0;
 
  public:
-     SpatialMixtureSampler(const std::vector<std::vector<double>> &_data,
-                           const Eigen::MatrixXd &W);
+     SpatialMixtureSampler(
+        const SamplerParams &_params,
+        const std::vector<std::vector<double>> &_data,
+        const Eigen::MatrixXd &W);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);

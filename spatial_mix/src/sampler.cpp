@@ -1,11 +1,13 @@
 #include "sampler.hpp"
 #include <numeric>
+#include <stdexcept>
 
 using namespace stan::math;
 
 SpatialMixtureSampler::SpatialMixtureSampler(
+        const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,
-        const Eigen::MatrixXd &W): data(_data), W_init(W) {
+        const Eigen::MatrixXd &W): params(_params), data(_data), W_init(W) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -19,22 +21,25 @@ SpatialMixtureSampler::SpatialMixtureSampler(
 void SpatialMixtureSampler::init() {
     // TODO now we fix this, remember to put priors or pass from
     // constructor
-    priorMean = 0.0;
-    priorA = 2.0;
-    priorB = 2.0;
-    priorLambda = 0.1;
-    rho = 0.9;
-    numComponents = 3;
-    nu = numComponents + 2;
-    V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
-    alpha = 5;
-    beta = 5;
+    numComponents = params.num_components();
 
+    priorMean = params.p0_params().mu0();
+    priorA = params.p0_params().a();
+    priorB = params.p0_params().b();
+    priorLambda = params.p0_params().lam_();
 
-    Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
-    // Sigma = inv_wishart_rng(nu, V0, rng);
+    nu = params.sigma_params().nu();
+    if (params.sigma_params().identity())
+        V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
+    else
+        throw std::logic_error("Case not implemented yet");
+
+    alpha = params.rho_params().a();
+    beta = params.rho_params().b();
 
     // Now proper initialization
+    rho = 0.9;
+    Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
     weights = Eigen::MatrixXd::Zero(numGroups, numComponents);
@@ -53,14 +58,6 @@ void SpatialMixtureSampler::init() {
         weights.row(i) = dirichlet_rng(
             Eigen::VectorXd::Ones(numComponents), rng);
         transformed_weights.row(i) = utils::Alr(weights.row(i), true);
-    }
-
-
-    for(int i=0; i< numGroups; ++i){
-      std::cout << "GROUP: " << i+1 << std::endl;
-      for (int h=0; h<numComponents-1; h++){
-          std::cout << "transformed_weight: " << transformed_weights(i, h) << std::endl;
-      }
     }
 
     for (int i=0; i < numGroups; i++) {
@@ -87,7 +84,6 @@ void SpatialMixtureSampler::init() {
     sigma_star_h.resize(numComponents - 1);
 
     _computeInvSigmaH();
-    std::cout<<"init done nostro"<<std::endl;
 }
 
 void SpatialMixtureSampler::sample()  {
@@ -100,7 +96,7 @@ void SpatialMixtureSampler::sample()  {
 
 
 void SpatialMixtureSampler::sampleAtoms()  {
-    std::vector<std::vector<double>> datavec(numComponents); // one vector per component
+    std::vector<std::vector<double>> datavec(numComponents);
     for (int h=0; h < numComponents; h++)
         datavec[h].reserve(numdata);
 
@@ -296,7 +292,8 @@ void SpatialMixtureSampler::printDebugString() {
         std::cout << n << ", ";
     std::cout << std::endl;
 
-    std::vector<std::vector<std::vector<double>>> datavecs(numGroups); // one vector per component
+    // one vector per component
+    std::vector<std::vector<std::vector<double>>> datavecs(numGroups);
 
     for (int i=0; i < numGroups; i++) {
         datavecs[i].resize(numComponents);

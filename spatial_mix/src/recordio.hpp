@@ -65,5 +65,17 @@ std::deque<T> readManyFromFile(std::string filename) {
     return out;
 }
 
+template <typename T>
+T loadTextProto(std::string filename) {
+    std::ifstream ifs(filename);
+    google::protobuf::io::IstreamInputStream iis(&ifs);
+    T out;
+    auto success = google::protobuf::TextFormat::Parse(&iis, &out);
+    if (! success)
+        std::cout << "An error occurred in 'loadTextProto'; success: " <<
+        success << std::endl; 
+    return out;
+}
+
 
 #endif // SRC_RECORDIO_HPP

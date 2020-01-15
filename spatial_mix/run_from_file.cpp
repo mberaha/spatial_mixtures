@@ -6,6 +6,7 @@
 #include "src/utils.hpp"
 
 #include "univariate_mixture_state.pb.h"
+#include "sampler_params.pb.h"
 
 using namespace std;
 
@@ -49,8 +50,12 @@ int main(int ac, char* av[]) {
 
   std::deque<UnivariateState> chains;
 
+  SamplerParams params = loadTextProto<SamplerParams>(
+    "resources/sampler_params.asciipb");
 
-  SpatialMixtureSampler spSampler(data, W);
+    std::cout << "PARAMS: " << std::endl << params.DebugString() << std::endl;
+
+  SpatialMixtureSampler spSampler(params, data, W);
   spSampler.init();
 
   for (int i=0; i < burnin; i++) {
