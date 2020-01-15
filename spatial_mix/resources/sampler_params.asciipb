@@ -14,5 +14,5 @@ rho_params {
 
 sigma_params {
   nu: 8
-  identity: true
+  identity: True
 }

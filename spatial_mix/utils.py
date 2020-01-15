@@ -7,6 +7,8 @@ from scipy.stats import norm
 
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
 
+import spmixtures
+
 
 def loadChains(filename, msgType=UnivariateState):
     out = []
@@ -64,3 +66,16 @@ def lpml(densities):
     if isinstance(densities, list):
         densities = np.hstack(densities)
     return np.sum(1 / np.mean(1 / densities, axis=0))
+
+
+def runSpatialMixtureSampler(
+        burnin, niter, thin, data_file, W_file, params_file):
+    def getDeserialized(serialized):
+        out = UnivariateState
+        out.ParseFromString(serialized)
+        return out
+
+    serializedChains = spmixtures.runSpatialSampler(
+        burnin, niter, thin, data_file, W_file, params_file)
+
+    return list(map(getDeserialized, serializedChains))
