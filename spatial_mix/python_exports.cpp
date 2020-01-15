@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 
 #include <deque>
 #include <string>
@@ -14,14 +15,11 @@
 
 namespace py = pybind11;
 
-std::deque<py::bytes> runSpatialSamplerPython(
+
+std::deque<py::bytes> _runSpatialSampler(
         int burnin, int niter, int thin,
-        std::string infile, std::string w_file, std::string params_file) {
-
-    Eigen::MatrixXd W = utils::readMatrixFromCSV(w_file);
-    std::vector<std::vector<double>> data = utils::readDataFromCSV(infile);
-
-    SamplerParams params = loadTextProto<SamplerParams>(params_file);
+        const std::vector<std::vector<double>> &data,
+        const Eigen::MatrixXd &W, const SamplerParams &params) {
     SpatialMixtureSampler spSampler(params, data, W);
     spSampler.init();
 
@@ -39,15 +37,38 @@ std::deque<py::bytes> runSpatialSamplerPython(
             out.push_back((py::bytes) s);
         }
     }
-    std::cout << "done" << std::endl;
-    return out;
+    return out
 }
 
+
+std::deque<py::bytes> runSpatialSamplerPythonFromFiles(
+        int burnin, int niter, int thin,
+        std::string infile, std::string w_file, std::string params_file) {
+
+    Eigen::MatrixXd W = utils::readMatrixFromCSV(w_file);
+    std::vector<std::vector<double>> data = utils::readDataFromCSV(infile);
+    SamplerParams params = loadTextProto<SamplerParams>(params_file);
+    return _runSpatialSampler(burnin, niter, thin, data, W, params);
+}
+
+std::deque<py::bytes> runSpatialSamplerPythonFromData(
+        int burnin, int niter, int thin,
+        std::vector<std::vector<double>> data, Eigen::MatrixXd W,
+        std::string serialized_params) {
+
+    SamplerParams params;
+    params.ParseFromString(serialized_params);
+    return _runSpatialSampler(burnin, niter, thin, data, W, params);
+}
 
 
 PYBIND11_MODULE(spmixtures, m) {
     m.doc() = "aaa"; // optional module docstring
 
-    m.def("runSpatialSampler", &runSpatialSamplerPython,
+    m.def("_runSpatialSamplerFromFiles", &runSpatialSamplerPythonFromFiles,
           "runs the spatial sampler, returns a list (deque) of serialized protos");
+
+    m.def("_runSpatialSamplerFromData", &runSpatialSamplerPythonFromData,
+        "runs the spatial sampler, returns a list (deque) of serialized protos");
+
 }

@@ -1,12 +1,16 @@
 import numpy as np
 import multiprocessing
+import os
+import sys
 
 from functools import partial
+from google.protobuf import text_format
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
 
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
 
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import spmixtures
 
 
@@ -68,14 +72,33 @@ def lpml(densities):
     return np.sum(1 / np.mean(1 / densities, axis=0))
 
 
-def runSpatialMixtureSampler(
-        burnin, niter, thin, data_file, W_file, params_file):
-    def getDeserialized(serialized):
-        out = UnivariateState
-        out.ParseFromString(serialized)
-        return out
+def getDeserialized(serialized, objType):
+    out = objType()
+    out.ParseFromString(serialized)
+    return out
 
-    serializedChains = spmixtures.runSpatialSampler(
+
+def runSpatialMixtureSamplerFromFiles(
+        burnin, niter, thin, data_file, W_file, params_file):
+
+    serializedChains = spmixtures._runSpatialSamplerFromFiles(
         burnin, niter, thin, data_file, W_file, params_file)
 
-    return list(map(getDeserialized, serializedChains))
+    return list(map(
+        lambda x: getDeserialized(x, UnivariateState), serializedChains))
+
+
+def runSpatialMixtureSamplerFromData(
+        burnin, niter, thin, data, W, params):
+
+    if isinstance(params, str):
+        params = UnivariateState()
+        with open(params, 'r') as fp:
+            text_format.parse(fp.read, params)
+
+    serializedChains = spmixtures._runSpatialSamplerFromData(
+        burnin, niter, thin, data, W, params.SerializeToString())
+    print("Received {0} serialized messages".format(len(serializedChains)))
+    out = list(map(
+        lambda x: getDeserialized(x, UnivariateState), serializedChains))
+    return out
