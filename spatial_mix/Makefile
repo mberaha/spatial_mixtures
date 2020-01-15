@@ -16,7 +16,7 @@ CFLAGS = \
 	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
 	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
 	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-	-D_REENTRANT
+	-D_REENTRANT -fPIC
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
@@ -44,14 +44,19 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos run_from_file.out run_hdp_from_file.out $(SPIKES_EXECS)
+all: compile_protos run_from_file.out run_hdp_from_file.out
+
+# all: compile_protos run_from_file.out run_hdp_from_file.out $(SPIKES_EXECS)
 # all: $(SPIKES_EXECS) run_from_file.out
 
-$(SPIKES_EXECS): %.out: %.o $(OBJS)
-	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
+# $(SPIKES_EXECS): %.out: %.o $(OBJS)
+# 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
 
-$(SPIKES_OBJS): %.o: %.cpp
-		$(CXX) $(CFLAGS) -c $< -o $@
+# $(SPIKES_OBJS): %.o: %.cpp
+# 		$(CXX) $(CFLAGS) -c $< -o $@
+
+generate_pybind: $(OBJS)
+	c++ -shared $(CFLAGS) `python3 -m pybind11 --includes` python_exports.cpp -o spmixtures`python3-config --extension-suffix` $(OBJS) $(LDLIBS)
 
 run_from_file.out: run_from_file.o $(OBJS)
 	$(CXX) $(LDFLAGS) -o run_from_file.out $(OBJS) run_from_file.o  $(LDLIBS)
