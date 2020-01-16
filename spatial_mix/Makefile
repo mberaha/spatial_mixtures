@@ -10,6 +10,7 @@ CFLAGS = \
 	-std=c++1y \
 	-O3 \
 	-fopenmp \
+	-MMD \
 	-I$(STAN_ROOT_DIR) \
 	-I $(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
 	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
@@ -44,16 +45,13 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos run_from_file.out run_hdp_from_file.out
+all: compile_protos run_from_file.out run_hdp_from_file.out generate_pybind $(SPIKES_EXECS)
 
-# all: compile_protos run_from_file.out run_hdp_from_file.out $(SPIKES_EXECS)
-# all: $(SPIKES_EXECS) run_from_file.out
+$(SPIKES_EXECS): %.out: %.o $(OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
 
-# $(SPIKES_EXECS): %.out: %.o $(OBJS)
-# 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
-
-# $(SPIKES_OBJS): %.o: %.cpp
-# 		$(CXX) $(CFLAGS) -c $< -o $@
+$(SPIKES_OBJS): %.o: %.cpp
+		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
 	$(CXX) -shared $(CFLAGS) `python3 -m pybind11 --includes` \
@@ -75,10 +73,7 @@ run_hdp_from_file.o:
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
--include $(dep)
-
-%.d: %.c
-	$(CXX) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+-include $(OBJS:%.o=%.d)
 
 clean:
 	rm $(OBJS) $(SPIKES_OBJS) run_from_file.o
