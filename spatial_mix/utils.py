@@ -3,11 +3,11 @@ import multiprocessing
 import os
 import sys
 
-from functools import partial
 from google.protobuf import text_format
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
 
+from spatial_mix.protos.py.sampler_params_pb2 import SamplerParams
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
@@ -92,13 +92,13 @@ def runSpatialMixtureSamplerFromData(
         burnin, niter, thin, data, W, params):
 
     if isinstance(params, str):
-        params = UnivariateState()
         with open(params, 'r') as fp:
-            text_format.parse(fp.read, params)
+            params = SamplerParams()
+            text_format.Parse(fp.read(), params)
 
     serializedChains = spmixtures._runSpatialSamplerFromData(
         burnin, niter, thin, data, W, params.SerializeToString())
-    print("Received {0} serialized messages".format(len(serializedChains)))
+
     out = list(map(
         lambda x: getDeserialized(x, UnivariateState), serializedChains))
     return out

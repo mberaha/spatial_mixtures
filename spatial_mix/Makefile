@@ -56,7 +56,9 @@ all: compile_protos run_from_file.out run_hdp_from_file.out
 # 		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
-	c++ -shared $(CFLAGS) `python3 -m pybind11 --includes` python_exports.cpp -o spmixtures`python3-config --extension-suffix` $(OBJS) $(LDLIBS)
+	$(CXX) -shared $(CFLAGS) `python3 -m pybind11 --includes` \
+		python_exports.cpp -o spmixtures`python3-config --extension-suffix` \
+		$(OBJS) $(LDLIBS)
 
 run_from_file.out: run_from_file.o $(OBJS)
 	$(CXX) $(LDFLAGS) -o run_from_file.out $(OBJS) run_from_file.o  $(LDLIBS)

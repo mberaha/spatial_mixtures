@@ -20,6 +20,7 @@ std::deque<py::bytes> _runSpatialSampler(
         int burnin, int niter, int thin,
         const std::vector<std::vector<double>> &data,
         const Eigen::MatrixXd &W, const SamplerParams &params) {
+
     SpatialMixtureSampler spSampler(params, data, W);
     spSampler.init();
 
@@ -37,7 +38,7 @@ std::deque<py::bytes> _runSpatialSampler(
             out.push_back((py::bytes) s);
         }
     }
-    return out
+    return out;
 }
 
 
@@ -50,6 +51,7 @@ std::deque<py::bytes> runSpatialSamplerPythonFromFiles(
     SamplerParams params = loadTextProto<SamplerParams>(params_file);
     return _runSpatialSampler(burnin, niter, thin, data, W, params);
 }
+
 
 std::deque<py::bytes> runSpatialSamplerPythonFromData(
         int burnin, int niter, int thin,
