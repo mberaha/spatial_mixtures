@@ -12,7 +12,7 @@ CFLAGS = \
 	-fopenmp \
 	-MMD \
 	-I$(STAN_ROOT_DIR) \
-	-I $(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
+	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
 	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
 	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
 	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
