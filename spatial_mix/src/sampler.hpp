@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include <numeric>
+#include <stdexcept>
+#include <Eigen/Dense>
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
 #include "sampler_params.pb.h"
@@ -41,6 +44,17 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd SigmaInv;
      Eigen::MatrixXd F;
 
+     // Regression
+     bool regression = false;
+     int p_size;
+     Eigen::VectorXd reg_coeff;
+     Eigen::MatrixXd predictors;
+     Eigen::VectorXd reg_coeff_mean;
+     Eigen::MatrixXd reg_coeff_prec;
+     Eigen::VectorXd reg_data;
+     Eigen::VectorXd mu;
+     Eigen::DiagonalMatrix<double, Eigen::Dynamic, Eigen::Dynamic> V;
+
      // prior for Sigma
      double nu;
      Eigen::MatrixXd V0;
@@ -66,6 +80,11 @@ class SpatialMixtureSampler {
         const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,
         const Eigen::MatrixXd &W);
+
+    SpatialMixtureSampler(
+       const SamplerParams &_params,
+       const std::vector<std::vector<double>> &_data,
+       const Eigen::MatrixXd &W, const std::vector<Eigen::MatrixXd> &X);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);
@@ -103,6 +122,10 @@ class SpatialMixtureSampler {
      * \mu_i = \rho N^{-1} \sum{j \n N(i)} tw_j
      */
     void sampleSigma();
+
+    void regress();
+
+    void computeRegressionResiduals();
 
     void _computeInvSigmaH();
 

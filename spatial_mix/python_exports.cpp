@@ -26,8 +26,12 @@ std::deque<py::bytes> _runSpatialSampler(
 
     std::deque<py::bytes> out;
 
+    int log_every = 200;
+
     for (int i=0; i < burnin; i++) {
         spSampler.sample();
+        if ((i + 1) % log_every == 0)
+            std::cout << "Burn-in, iter #" << i+1 << " / " << burnin << std::endl;
     }
 
     for (int i=0; i < niter; i++) {
@@ -37,6 +41,8 @@ std::deque<py::bytes> _runSpatialSampler(
             spSampler.getStateAsProto().SerializeToString(&s);
             out.push_back((py::bytes) s);
         }
+        if ((i + 1) % log_every == 0)
+            std::cout << "Running, iter #" << i+1 << " / " << burnin << std::endl; 
     }
     return out;
 }

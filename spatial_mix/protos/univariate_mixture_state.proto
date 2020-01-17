@@ -20,10 +20,16 @@ message UnivariateState {
   }
 
   int32 num_components = 1;
+
   repeated UnivariateMixtureAtom atoms = 2;
+
   repeated GroupParams groupParams = 3;
+
   double rho = 4;
+
   EigenMatrix Sigma = 5;
+
+  repeated double regression_coefficients = 6 [packed=true];
 }
 
 

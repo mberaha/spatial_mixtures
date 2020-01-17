@@ -56,14 +56,21 @@ int main(int ac, char* av[]) {
   SpatialMixtureSampler spSampler(params, data, W);
   spSampler.init();
 
+  int log_every = 200;
+
   for (int i=0; i < burnin; i++) {
       spSampler.sample();
+      if ((i + 1) % log_every == 0)
+          std::cout << "Burn-in, iter #" << i+1 << " / " << burnin << std::endl;
   }
 
   for (int i=0; i < niter; i++) {
       spSampler.sample();
       if ((i +1) % thin == 0)
           chains.push_back(spSampler.getStateAsProto());
+
+      if ((i + 1) % log_every == 0)
+          std::cout << "Running, iter #" << i+1 << " / " << burnin << std::endl;
   }
 
   writeManyToFile(chains, outfile);

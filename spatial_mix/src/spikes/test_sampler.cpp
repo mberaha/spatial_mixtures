@@ -17,14 +17,27 @@ int main() {
     int numSamples = 1000;
     std::cout << "numSamples: " << numSamples << std::endl;
     std::vector<std::vector<double>> data(numGroups);
+    std::vector<Eigen::MatrixXd> regressors(numGroups);
+
+    Eigen::VectorXd beta(4);
+    beta << 0.0, 1.0, 2.0, -1.0;
+    Eigen::MatrixXd sigma = Eigen::MatrixXd::Identity(4, 4);
+    Eigen::VectorXd x_mean = Eigen::VectorXd::Zero(4);
+
     for (int i=0; i < numGroups; i++) {
         data[i].resize(numSamples);
+        regressors[i].resize(numSamples, 4);
         for (int j=0; j < numSamples; j++) {
+            Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
+            double err;
             double u = stan::math::uniform_rng(0.0, 1.0, rng);
             if(u < 0.5)
-                data[i][j] = stan::math::normal_rng(-2.5, 1.0, rng);
+                err = stan::math::normal_rng(-2.5, 1.0, rng);
             else
-                data[i][j] = stan::math::normal_rng(2.5, 1.0, rng);
+                err = stan::math::normal_rng(2.5, 1.0, rng);
+
+            data[i][j] = x.transpose() * beta + err;
+            regressors[i].row(j) = x;
         }
     }
 
@@ -51,20 +64,19 @@ int main() {
 
     SamplerParams params = loadTextProto<SamplerParams>(
         "/home/mario/PhD/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
-
     std::cout << params.DebugString() << std::endl;
 
-    SpatialMixtureSampler spSampler(params, data, W);
+    SpatialMixtureSampler spSampler(params, data, W, regressors);
     std::cout<<"Init start"<<std::endl;
     spSampler.init();
     std::cout<<"Init done"<<std::endl;
     spSampler.printDebugString();
 
-    for (int i=0; i < 500; i++) {
+    for (int i=0; i < 1000; i++) {
         spSampler.sample();
     }
     spSampler.printDebugString();
-    for (int i=0; i < 5; i++) {
+    for (int i=0; i < 1000; i++) {
         spSampler.sample();
         if ((i+1) % 10 == 0) {
             chains.push_back(spSampler.getStateAsProto());
@@ -72,17 +84,17 @@ int main() {
     }
 
     spSampler.printDebugString();
-    writeManyToFile(chains, "chains_now2.dat");
-    std::cout << "Done" << std::endl;
-
-
-    std::deque<UnivariateState> restored;
-    restored = readManyFromFile<UnivariateState>("chains_now2.dat");
-
-    std::cout << "******** RESTORED ********" << std::endl;
-
-    std::cout << "Acceptance rate for Rho: " <<
-        1.0 * spSampler.getNumAccepted() / (1.0 * 15000) << std::endl;
+    // writeManyToFile(chains, "chains_now2.dat");
+    // std::cout << "Done" << std::endl;
+    //
+    //
+    // std::deque<UnivariateState> restored;
+    // restored = readManyFromFile<UnivariateState>("chains_now2.dat");
+    //
+    // std::cout << "******** RESTORED ********" << std::endl;
+    //
+    // std::cout << "Acceptance rate for Rho: " <<
+    //     1.0 * spSampler.getNumAccepted() / (1.0 * 15000) << std::endl;
 
     return 1;
 }

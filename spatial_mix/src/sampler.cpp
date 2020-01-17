@@ -1,6 +1,4 @@
 #include "sampler.hpp"
-#include <numeric>
-#include <stdexcept>
 
 using namespace stan::math;
 
@@ -16,6 +14,43 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
     pg_rng = new PolyaGammaHybridDouble(seed);
+}
+
+
+SpatialMixtureSampler::SpatialMixtureSampler(
+        const SamplerParams &_params,
+        const std::vector<std::vector<double>> &_data,
+        const Eigen::MatrixXd &W, const std::vector<Eigen::MatrixXd> &X):
+            params(_params), data(_data), W_init(W) {
+    numGroups = data.size();
+    samplesPerGroup.resize(numGroups);
+    for (int i=0; i < numGroups; i++) {
+        samplesPerGroup[i] = data[i].size();
+    }
+    numdata = std::accumulate(
+        samplesPerGroup.begin(), samplesPerGroup.end(), 0);
+    pg_rng = new PolyaGammaHybridDouble(seed);
+
+    regression = true;
+    p_size = X[0].cols();
+    std::cout << "p_size: " << p_size << std::endl;
+    reg_coeff_mean = Eigen::VectorXd::Zero(p_size);
+    reg_coeff_prec = Eigen::MatrixXd::Identity(p_size, p_size);
+    reg_coeff = stan::math::multi_normal_rng(
+        reg_coeff_mean, 10 * reg_coeff_prec, rng);
+
+    predictors.resize(numdata, p_size);
+    reg_data.resize(numdata);
+    V.resize(numdata);
+    mu.resize(numdata);
+    int start = 0;
+    for (int i=0; i < numGroups; i++) {
+        predictors.block(start, 0, samplesPerGroup[i], p_size) = X[i];
+        reg_data.segment(start, samplesPerGroup[i]) = \
+            Eigen::Map<Eigen::VectorXd>(data[i].data(), samplesPerGroup[i]);
+        start += samplesPerGroup[i];
+    }
+    computeRegressionResiduals();
 }
 
 void SpatialMixtureSampler::init() {
@@ -38,7 +73,7 @@ void SpatialMixtureSampler::init() {
     beta = params.rho_params().b();
 
     // Now proper initialization
-    rho = 0.9;
+    rho = 0.5;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -87,6 +122,11 @@ void SpatialMixtureSampler::init() {
 }
 
 void SpatialMixtureSampler::sample()  {
+    if (regression) {
+        regress();
+        computeRegressionResiduals();
+    }
+
     sampleAtoms();
     sampleAllocations();
     sampleWeights();
@@ -233,6 +273,41 @@ void SpatialMixtureSampler::sampleSigma() {
     _computeInvSigmaH();
 }
 
+void SpatialMixtureSampler::regress() {
+    // Compute mu and v
+    int start = 0;
+    int s = 0;
+    for (int i=0; i < numGroups; i++) {
+        for (int j=0; j < samplesPerGroup[i]; j++) {
+            s = cluster_allocs[i][j];
+            mu(start + j) = means[s];
+            V.diagonal()[start + j] = stddevs[s] * stddevs[s];
+        }
+        start += samplesPerGroup[i];
+    }
+
+    // compute posterior parameters for beta
+    Eigen::VectorXd postMean(p_size);
+    Eigen::MatrixXd postPrec(p_size, p_size);
+
+    postPrec = predictors.transpose() * V * predictors + reg_coeff_prec;
+    postMean = postPrec.ldlt().solve(
+        predictors.transpose() * V * (reg_data - mu));
+
+    reg_coeff = stan::math::multi_normal_prec_rng(postMean, postPrec, rng);
+}
+
+void SpatialMixtureSampler::computeRegressionResiduals() {
+    Eigen::VectorXd residuals = reg_data - predictors * reg_coeff;
+    int start = 0;
+    for (int i=0; i < numGroups; i++) {
+        for (int j=0; j < samplesPerGroup[i]; j++) {
+            data[i][j] = residuals[start + j];
+        }
+        start += samplesPerGroup[i];
+    }
+}
+
 void SpatialMixtureSampler::_computeInvSigmaH() {
     SigmaInv = Sigma.llt().solve(Eigen::MatrixXd::Identity(
         numComponents - 1, numComponents - 1));
@@ -281,6 +356,10 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
     state.mutable_sigma()->set_cols(Sigma.cols());
     *state.mutable_sigma()->mutable_data() = {
         Sigma.data(), Sigma.data() + Sigma.size()};
+
+    if (regression)
+        *state.mutable_regression_coefficients() = {
+            reg_coeff.data(), reg_coeff.data() + p_size};
     return state;
 }
 
@@ -310,5 +389,10 @@ void SpatialMixtureSampler::printDebugString() {
         std::cout << "##### Atom: mean=" << means[h] << ", sd=" << stddevs[h]
                   << " weights per group: " << weights.col(h).transpose() << std::endl;
         std::cout << std::endl;
+    }
+
+    if (regression) {
+        std::cout << "Regression Coefficients: " << std::endl;
+        std::cout << "    " << reg_coeff.transpose() << std::endl;
     }
 }
