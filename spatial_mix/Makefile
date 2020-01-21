@@ -45,7 +45,7 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos run_from_file.out run_hdp_from_file.out generate_pybind $(SPIKES_EXECS)
+all: run_from_file.out run_hdp_from_file.out generate_pybind $(SPIKES_EXECS)
 
 $(SPIKES_EXECS): %.out: %.o $(OBJS)
 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)

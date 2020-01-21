@@ -69,13 +69,15 @@ class SpatialMixtureSampler {
      double priorMean, priorA, priorB, priorLambda;
 
      unsigned long seed = 213513435;
-     PolyaGammaHybridDouble* pg_rng;
+     PolyaGammaHybridDouble* pg_rng = nullptr;
      std::mt19937_64 rng{213513435};
 
      // diagnostic for the MH sampler
      int numAccepted = 0;
 
  public:
+     SpatialMixtureSampler() {}
+
      SpatialMixtureSampler(
         const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,

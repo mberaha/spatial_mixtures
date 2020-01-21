@@ -19,10 +19,30 @@ namespace py = pybind11;
 std::deque<py::bytes> _runSpatialSampler(
         int burnin, int niter, int thin,
         const std::vector<std::vector<double>> &data,
-        const Eigen::MatrixXd &W, const SamplerParams &params) {
+        const Eigen::MatrixXd &W, const SamplerParams &params,
+        const std::vector<Eigen::MatrixXd> &covariates) {
 
-    SpatialMixtureSampler spSampler(params, data, W);
+    std::cout << "_runSpatialSampler" << std::endl;
+
+    SpatialMixtureSampler spSampler(params, data, W, covariates);
+    std::cout << "Declared Object" << std::endl;
+    //
+    // if (covariates.size() == 0) {
+    //     spSampler = SpatialMixtureSampler(params, data, W);
+    // } else {
+    //     spSampler = SpatialMixtureSampler(params, data, W, covariates);
+    // }
+    std::cout << "Created Object" << std::endl;
     spSampler.init();
+    std::cout << "Init Done" << std::endl;
+
+    for (int i = 0; i < data.size(); i++) {
+        std::cout << "Group: " << i+1 << " # data: " << data[i].size() << std::endl;
+    }
+
+    std::cout << "W_mat: \n" << W << std::endl;
+
+    std::cout << "Params: \n" << params.DebugString() << std::endl;
 
     std::deque<py::bytes> out;
 
@@ -42,7 +62,7 @@ std::deque<py::bytes> _runSpatialSampler(
             out.push_back((py::bytes) s);
         }
         if ((i + 1) % log_every == 0)
-            std::cout << "Running, iter #" << i+1 << " / " << burnin << std::endl; 
+            std::cout << "Running, iter #" << i+1 << " / " << burnin << std::endl;
     }
     return out;
 }
@@ -50,33 +70,36 @@ std::deque<py::bytes> _runSpatialSampler(
 
 std::deque<py::bytes> runSpatialSamplerPythonFromFiles(
         int burnin, int niter, int thin,
-        std::string infile, std::string w_file, std::string params_file) {
+        std::string infile, std::string w_file, std::string params_file,
+        const std::vector<Eigen::MatrixXd> &covariates) {
 
     Eigen::MatrixXd W = utils::readMatrixFromCSV(w_file);
     std::vector<std::vector<double>> data = utils::readDataFromCSV(infile);
     SamplerParams params = loadTextProto<SamplerParams>(params_file);
-    return _runSpatialSampler(burnin, niter, thin, data, W, params);
+    return _runSpatialSampler(burnin, niter, thin, data, W, params, covariates);
 }
 
 
 std::deque<py::bytes> runSpatialSamplerPythonFromData(
         int burnin, int niter, int thin,
-        std::vector<std::vector<double>> data, Eigen::MatrixXd W,
-        std::string serialized_params) {
+        const std::vector<std::vector<double>> &data,
+        const Eigen::MatrixXd &W,
+        std::string serialized_params,
+        const std::vector<Eigen::MatrixXd> &covariates) {
 
     SamplerParams params;
     params.ParseFromString(serialized_params);
-    return _runSpatialSampler(burnin, niter, thin, data, W, params);
+    return _runSpatialSampler(burnin, niter, thin, data, W, params, covariates);
 }
 
 
 PYBIND11_MODULE(spmixtures, m) {
     m.doc() = "aaa"; // optional module docstring
 
-    m.def("_runSpatialSamplerFromFiles", &runSpatialSamplerPythonFromFiles,
+    m.def("runSpatialSamplerFromFiles", &runSpatialSamplerPythonFromFiles,
           "runs the spatial sampler, returns a list (deque) of serialized protos");
 
-    m.def("_runSpatialSamplerFromData", &runSpatialSamplerPythonFromData,
+    m.def("runSpatialSamplerFromData", &runSpatialSamplerPythonFromData,
         "runs the spatial sampler, returns a list (deque) of serialized protos");
 
 }

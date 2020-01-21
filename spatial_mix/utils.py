@@ -78,27 +78,27 @@ def getDeserialized(serialized, objType):
     return out
 
 
-def runSpatialMixtureSamplerFromFiles(
-        burnin, niter, thin, data_file, W_file, params_file):
+def runSpatialMixtureSampler(
+        burnin, niter, thin, W, params, data, covariates=[]):
+    serializedChains = []
 
-    serializedChains = spmixtures._runSpatialSamplerFromFiles(
-        burnin, niter, thin, data_file, W_file, params_file)
+    if isinstance(data, str) and isinstance(W, str):
+        print("From file")
+        serializedChains = spmixtures.runSpatialSamplerFromFiles(
+            burnin, niter, thin, data, W, params)
+
+    elif isinstance(data, list) and \
+            all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
+            isinstance(W, (np.ndarray, np.generic)):
+        print("From data")
+        if isinstance(params, str):
+            print("Loading Params")
+            with open(params, 'r') as fp:
+                params = SamplerParams()
+                text_format.Parse(fp.read(), params)
+        serializedChains = spmixtures.runSpatialSamplerFromData(
+            burnin, niter, thin, data, W, params.SerializeToString(),
+            covariates)
 
     return list(map(
         lambda x: getDeserialized(x, UnivariateState), serializedChains))
-
-
-def runSpatialMixtureSamplerFromData(
-        burnin, niter, thin, data, W, params):
-
-    if isinstance(params, str):
-        with open(params, 'r') as fp:
-            params = SamplerParams()
-            text_format.Parse(fp.read(), params)
-
-    serializedChains = spmixtures._runSpatialSamplerFromData(
-        burnin, niter, thin, data, W, params.SerializeToString())
-
-    out = list(map(
-        lambda x: getDeserialized(x, UnivariateState), serializedChains))
-    return out

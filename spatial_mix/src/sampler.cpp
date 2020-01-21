@@ -13,7 +13,6 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     }
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
-    pg_rng = new PolyaGammaHybridDouble(seed);
 }
 
 
@@ -29,33 +28,34 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     }
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
-    pg_rng = new PolyaGammaHybridDouble(seed);
 
-    regression = true;
-    p_size = X[0].cols();
-    std::cout << "p_size: " << p_size << std::endl;
-    reg_coeff_mean = Eigen::VectorXd::Zero(p_size);
-    reg_coeff_prec = Eigen::MatrixXd::Identity(p_size, p_size);
-    reg_coeff = stan::math::multi_normal_rng(
-        reg_coeff_mean, 10 * reg_coeff_prec, rng);
+    if (X.size() > 0) {
+        regression = true;
+        p_size = X[0].cols();
+        std::cout << "p_size: " << p_size << std::endl;
+        reg_coeff_mean = Eigen::VectorXd::Zero(p_size);
+        reg_coeff_prec = Eigen::MatrixXd::Identity(p_size, p_size);
+        reg_coeff = stan::math::multi_normal_rng(
+            reg_coeff_mean, 10 * reg_coeff_prec, rng);
 
-    predictors.resize(numdata, p_size);
-    reg_data.resize(numdata);
-    V.resize(numdata);
-    mu.resize(numdata);
-    int start = 0;
-    for (int i=0; i < numGroups; i++) {
-        predictors.block(start, 0, samplesPerGroup[i], p_size) = X[i];
-        reg_data.segment(start, samplesPerGroup[i]) = \
-            Eigen::Map<Eigen::VectorXd>(data[i].data(), samplesPerGroup[i]);
-        start += samplesPerGroup[i];
+        predictors.resize(numdata, p_size);
+        reg_data.resize(numdata);
+        V.resize(numdata);
+        mu.resize(numdata);
+        int start = 0;
+        for (int i=0; i < numGroups; i++) {
+            predictors.block(start, 0, samplesPerGroup[i], p_size) = X[i];
+            reg_data.segment(start, samplesPerGroup[i]) = \
+                Eigen::Map<Eigen::VectorXd>(data[i].data(), samplesPerGroup[i]);
+            start += samplesPerGroup[i];
+        }
+        computeRegressionResiduals();
     }
-    computeRegressionResiduals();
 }
 
 void SpatialMixtureSampler::init() {
-    // TODO now we fix this, remember to put priors or pass from
-    // constructor
+    pg_rng = new PolyaGammaHybridDouble(seed);
+
     numComponents = params.num_components();
 
     priorMean = params.p0_params().mu0();
@@ -126,7 +126,6 @@ void SpatialMixtureSampler::sample()  {
         regress();
         computeRegressionResiduals();
     }
-
     sampleAtoms();
     sampleAllocations();
     sampleWeights();
@@ -182,8 +181,10 @@ void SpatialMixtureSampler::sampleAllocations() {
 void SpatialMixtureSampler::sampleWeights() {
     for (int i=0; i < numGroups; i++) {
         std::vector<int> cluster_sizes(numComponents, 0);
+
         for(int j=0; j<samplesPerGroup[i]; j++)
             cluster_sizes[cluster_allocs[i][j]] += 1;
+
         for (int h=0; h < numComponents - 1; h++) {
             /*
              * we draw omega from a Polya-Gamma distribution
@@ -260,7 +261,7 @@ void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
 
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         Eigen::VectorXd mu_i = W.row(i) * utils::removeColumn(
             transformed_weights, numComponents-1);
@@ -268,7 +269,6 @@ void SpatialMixtureSampler::sampleSigma() {
             transformed_weights.row(i), numComponents-1);
         Vn += (wtilde_i - mu_i) * (wtilde_i - mu_i).transpose();
     }
-
     Sigma = inv_wishart_rng(nu_n, Vn, rng);
     _computeInvSigmaH();
 }
@@ -281,7 +281,7 @@ void SpatialMixtureSampler::regress() {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             s = cluster_allocs[i][j];
             mu(start + j) = means[s];
-            V.diagonal()[start + j] = stddevs[s] * stddevs[s];
+            V.diagonal()[start + j] = 1.0 / (stddevs[s] * stddevs[s]);
         }
         start += samplesPerGroup[i];
     }
