@@ -139,7 +139,6 @@ void SpatialMixtureSampler::sampleAtoms()  {
     for (int h=0; h < numComponents; h++)
         datavec[h].reserve(numdata);
 
-    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         for (int j=0; j < samplesPerGroup[i]; j++) {
             int comp = cluster_allocs[i][j];
@@ -160,8 +159,8 @@ void SpatialMixtureSampler::sampleAtoms()  {
 }
 
 void SpatialMixtureSampler::sampleAllocations() {
-    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
+        #pragma omp parallel for
         for (int j=0; j < samplesPerGroup[i]; j++) {
             double datum = data[i][j];
             Eigen::VectorXd logProbas(numComponents);
@@ -182,6 +181,7 @@ void SpatialMixtureSampler::sampleWeights() {
     for (int i=0; i < numGroups; i++) {
         std::vector<int> cluster_sizes(numComponents, 0);
 
+        #pragma omp parallel for
         for(int j=0; j<samplesPerGroup[i]; j++)
             cluster_sizes[cluster_allocs[i][j]] += 1;
 
@@ -218,6 +218,8 @@ void SpatialMixtureSampler::sampleWeights() {
         weights.row(i) = utils::InvAlr(transformed_weights.row(i), true);
 
     }
+
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++)
         transformed_weights.row(i) = utils::Alr(weights.row(i), true);
 }
@@ -261,7 +263,7 @@ void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
 
-    // #pragma omp parallel for
+    #pragma omp parallel for
     for (int i=0; i < numGroups; i++) {
         Eigen::VectorXd mu_i = W.row(i) * utils::removeColumn(
             transformed_weights, numComponents-1);
@@ -277,7 +279,9 @@ void SpatialMixtureSampler::regress() {
     // Compute mu and v
     int start = 0;
     int s = 0;
+
     for (int i=0; i < numGroups; i++) {
+        #pragma omp parallel for
         for (int j=0; j < samplesPerGroup[i]; j++) {
             s = cluster_allocs[i][j];
             mu(start + j) = means[s];
@@ -300,7 +304,9 @@ void SpatialMixtureSampler::regress() {
 void SpatialMixtureSampler::computeRegressionResiduals() {
     Eigen::VectorXd residuals = reg_data - predictors * reg_coeff;
     int start = 0;
+
     for (int i=0; i < numGroups; i++) {
+        #pragma omp parallel for
         for (int j=0; j < samplesPerGroup[i]; j++) {
             data[i][j] = residuals[start + j];
         }

@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import multiprocessing
 import os
@@ -80,25 +81,37 @@ def getDeserialized(serialized, objType):
 
 def runSpatialMixtureSampler(
         burnin, niter, thin, W, params, data, covariates=[]):
-    serializedChains = []
 
-    if isinstance(data, str) and isinstance(W, str):
-        print("From file")
+    def checkFromFiles(data, W):
+        return isinstance(data, str) and isinstance(W, str)
+
+    def checkFromData(data, W):
+        return isinstance(data, list) and \
+                all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
+                isinstance(W, (np.ndarray, np.generic))
+
+    def maybeLoadParams(mayeParams):
+        if not isinstance(mayeParams, str):
+            return mayeParams
+
+        with open(mayeParams, 'r') as fp:
+            params = SamplerParams()
+            text_format.Parse(fp.read(), params)
+            return params
+
+    serializedChains = []
+    if checkFromFiles(data, W):
         serializedChains = spmixtures.runSpatialSamplerFromFiles(
             burnin, niter, thin, data, W, params)
 
-    elif isinstance(data, list) and \
-            all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
-            isinstance(W, (np.ndarray, np.generic)):
-        print("From data")
-        if isinstance(params, str):
-            print("Loading Params")
-            with open(params, 'r') as fp:
-                params = SamplerParams()
-                text_format.Parse(fp.read(), params)
+    elif checkFromData(data, W):
+        params = maybeLoadParams(params)
         serializedChains = spmixtures.runSpatialSamplerFromData(
             burnin, niter, thin, data, W, params.SerializeToString(),
             covariates)
+
+    else:
+        logging.error("Data type not understood")
 
     return list(map(
         lambda x: getDeserialized(x, UnivariateState), serializedChains))
