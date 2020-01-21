@@ -22,36 +22,16 @@ std::deque<py::bytes> _runSpatialSampler(
         const Eigen::MatrixXd &W, const SamplerParams &params,
         const std::vector<Eigen::MatrixXd> &covariates) {
 
-    std::cout << "_runSpatialSampler" << std::endl;
-
     SpatialMixtureSampler spSampler(params, data, W, covariates);
-    std::cout << "Declared Object" << std::endl;
-    //
-    // if (covariates.size() == 0) {
-    //     spSampler = SpatialMixtureSampler(params, data, W);
-    // } else {
-    //     spSampler = SpatialMixtureSampler(params, data, W, covariates);
-    // }
-    std::cout << "Created Object" << std::endl;
     spSampler.init();
-    std::cout << "Init Done" << std::endl;
-
-    for (int i = 0; i < data.size(); i++) {
-        std::cout << "Group: " << i+1 << " # data: " << data[i].size() << std::endl;
-    }
-
-    std::cout << "W_mat: \n" << W << std::endl;
-
-    std::cout << "Params: \n" << params.DebugString() << std::endl;
 
     std::deque<py::bytes> out;
-
     int log_every = 200;
 
     for (int i=0; i < burnin; i++) {
         spSampler.sample();
         if ((i + 1) % log_every == 0)
-            std::cout << "Burn-in, iter #" << i+1 << " / " << burnin << std::endl;
+            py::print("Burn-in, iter #", i+1, " / ", burnin);
     }
 
     for (int i=0; i < niter; i++) {
@@ -62,7 +42,7 @@ std::deque<py::bytes> _runSpatialSampler(
             out.push_back((py::bytes) s);
         }
         if ((i + 1) % log_every == 0)
-            std::cout << "Running, iter #" << i+1 << " / " << burnin << std::endl;
+            py::print("Running, iter #", i+1, " / ", niter);
     }
     return out;
 }
