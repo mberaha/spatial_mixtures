@@ -1,4 +1,4 @@
-num_components: 5
+num_components: 10
 
 p0_params {
   mu0: 0
@@ -8,11 +8,11 @@ p0_params {
 }
 
 rho_params {
-  a: 5
+  a: 1
   b: 5
 }
 
 sigma_params {
-  nu: 8
-  identity: true
+  nu: 100
+  identity: True
 }

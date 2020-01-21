@@ -1,11 +1,18 @@
+import logging
 import numpy as np
 import multiprocessing
+import os
+import sys
 
-from functools import partial
+from google.protobuf import text_format
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
 
+from spatial_mix.protos.py.sampler_params_pb2 import SamplerParams
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import spmixtures
 
 
 def loadChains(filename, msgType=UnivariateState):
@@ -64,3 +71,47 @@ def lpml(densities):
     if isinstance(densities, list):
         densities = np.hstack(densities)
     return np.sum(1 / np.mean(1 / densities, axis=0))
+
+
+def getDeserialized(serialized, objType):
+    out = objType()
+    out.ParseFromString(serialized)
+    return out
+
+
+def runSpatialMixtureSampler(
+        burnin, niter, thin, W, params, data, covariates=[]):
+
+    def checkFromFiles(data, W):
+        return isinstance(data, str) and isinstance(W, str)
+
+    def checkFromData(data, W):
+        return isinstance(data, list) and \
+                all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
+                isinstance(W, (np.ndarray, np.generic))
+
+    def maybeLoadParams(mayeParams):
+        if not isinstance(mayeParams, str):
+            return mayeParams
+
+        with open(mayeParams, 'r') as fp:
+            params = SamplerParams()
+            text_format.Parse(fp.read(), params)
+            return params
+
+    serializedChains = []
+    if checkFromFiles(data, W):
+        serializedChains = spmixtures.runSpatialSamplerFromFiles(
+            burnin, niter, thin, data, W, params)
+
+    elif checkFromData(data, W):
+        params = maybeLoadParams(params)
+        serializedChains = spmixtures.runSpatialSamplerFromData(
+            burnin, niter, thin, data, W, params.SerializeToString(),
+            covariates)
+
+    else:
+        logging.error("Data type not understood")
+
+    return list(map(
+        lambda x: getDeserialized(x, UnivariateState), serializedChains))

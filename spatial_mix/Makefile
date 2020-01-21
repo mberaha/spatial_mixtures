@@ -9,18 +9,18 @@ CXX = g++
 CFLAGS = \
 	-std=c++1y \
 	-O3 \
-	-fopenmp \
+	-MMD \
 	-I$(STAN_ROOT_DIR) \
-	-I $(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
+	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
 	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
 	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
 	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
 	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-	-D_REENTRANT
+	-D_REENTRANT -fPIC
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -O3 -fopenmp -D_REENTRANT
+LDFLAGS = -O3 -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
@@ -44,14 +44,18 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: compile_protos run_from_file.out run_hdp_from_file.out $(SPIKES_EXECS)
-# all: $(SPIKES_EXECS) run_from_file.out
+all: run_from_file.out run_hdp_from_file.out generate_pybind $(SPIKES_EXECS)
 
 $(SPIKES_EXECS): %.out: %.o $(OBJS)
 	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
 
 $(SPIKES_OBJS): %.o: %.cpp
 		$(CXX) $(CFLAGS) -c $< -o $@
+
+generate_pybind: $(OBJS)
+	$(CXX) -shared $(CFLAGS) `python3 -m pybind11 --includes` \
+		python_exports.cpp -o spmixtures`python3-config --extension-suffix` \
+		$(OBJS) $(LDLIBS)
 
 run_from_file.out: run_from_file.o $(OBJS)
 	$(CXX) $(LDFLAGS) -o run_from_file.out $(OBJS) run_from_file.o  $(LDLIBS)
@@ -68,10 +72,7 @@ run_hdp_from_file.o:
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
--include $(dep)
-
-%.d: %.c
-	$(CXX) $(CFLAGS) $< -MM -MT $(@:.d=.o) >$@
+-include $(OBJS:%.o=%.d)
 
 clean:
 	rm $(OBJS) $(SPIKES_OBJS) run_from_file.o
