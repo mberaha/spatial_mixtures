@@ -5,7 +5,11 @@ using namespace stan::math;
 SpatialMixtureSampler::SpatialMixtureSampler(
         const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,
-        const Eigen::MatrixXd &W): params(_params), data(_data), W_init(W) {
+        const Eigen::MatrixXd &W,
+        const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
+        const std::vector<std::vector<int>> &_neigh):
+            params(_params), data(_data), W_init(W), diss_metrics(metrics),
+            neigh(_neigh) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -19,8 +23,12 @@ SpatialMixtureSampler::SpatialMixtureSampler(
 SpatialMixtureSampler::SpatialMixtureSampler(
         const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,
-        const Eigen::MatrixXd &W, const std::vector<Eigen::MatrixXd> &X):
-            params(_params), data(_data), W_init(W) {
+        const Eigen::MatrixXd &W,
+        const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
+        const std::vector<std::vector<int>> &_neigh,
+        const std::vector<Eigen::MatrixXd> &X):
+            params(_params), data(_data), W_init(W), diss_metrics(metrics),
+            neigh(_neigh) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -58,6 +66,7 @@ void SpatialMixtureSampler::init() {
 
     numComponents = params.num_components();
 
+
     priorMean = params.p0_params().mu0();
     priorA = params.p0_params().a();
     priorB = params.p0_params().b();
@@ -73,7 +82,7 @@ void SpatialMixtureSampler::init() {
     beta = params.rho_params().b();
 
     // Now proper initialization
-    rho = 0.5;
+    rho = 0.9;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -103,7 +112,32 @@ void SpatialMixtureSampler::init() {
             cluster_allocs[i][j] = categorical_rng(weights.row(i), rng) - 1;
     }
 
+    // Boundary initialization
+    B = W_init;
+    p_bern = Eigen::MatrixXd::Zero(numGroups, numGroups);
+    numMetrics = diss_metrics.size();
+    bound_coeff = Eigen::VectorXd::Zero(numMetrics);
+    for (int k=0; k<numMetrics; k++) {
+      double c = normal_rng(0.0, 1.0, rng);
+        bound_coeff[k] = stan::math::abs(c);
+    }
+
+    pairwise_diss.resize(numGroups);
+    for (int i=0; i < numGroups; i++)
+      pairwise_diss[i].resize(numGroups);
+
+    for (int i=0; i < numGroups; i++){
+        for (int j=0; j < numGroups; j++){
+            pairwise_diss[i][j]=Eigen::VectorXd::Zero(numMetrics);
+            for (int k=0; k < numMetrics; k++){
+                pairwise_diss[i][j](k) = diss_metrics[k](i,j);
+            }
+        }
+    }
+
+
     W = W_init;
+
     // normalize W
     for (int i=0; i < W.rows(); ++i){
       W.row(i) *= rho/W.row(i).sum();
@@ -122,15 +156,24 @@ void SpatialMixtureSampler::init() {
 }
 
 void SpatialMixtureSampler::sample()  {
+
     if (regression) {
         regress();
         computeRegressionResiduals();
     }
     sampleAtoms();
+    // std::cout<<"Atoms done"<<std::endl;
     sampleAllocations();
+    // std::cout<<"Alloc done"<<std::endl;
     sampleWeights();
-    sampleSigma();
-    sampleRho();
+    // std::cout<<"Weights done"<<std::endl;
+    //sampleSigma();
+    // std::cout<<"Sigma done"<<std::endl;
+    //sampleRho();
+    // std::cout<<"Rho done"<<std::endl;
+    sampleB();
+    // std::cout<<"B done"<<std::endl;
+    sampleBoundaryCoeffs();
 }
 
 
@@ -198,6 +241,7 @@ void SpatialMixtureSampler::sampleWeights() {
                 transformed_weights(i, h) - C_ih);
 
             Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
+
             mu_i = mu_i.head(numComponents - 1);
             Eigen::VectorXd wtilde = transformed_weights.row(i).head(numComponents - 1);
 
@@ -210,6 +254,7 @@ void SpatialMixtureSampler::sampleWeights() {
             double mu_hat_ih = (
                 mu_star_ih / sigma_star_h[h] + N_ih -
                 0.5 * samplesPerGroup[i] + omega_ih*C_ih) * (sigma_hat_ih);
+
 
             transformed_weights(i, h) = normal_rng(
                 mu_hat_ih, std::sqrt(sigma_hat_ih), rng);
@@ -232,7 +277,13 @@ void SpatialMixtureSampler::sampleRho() {
     double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1.0, rng);
 
     // compute acceptance ratio
-    Eigen::MatrixXd rowVar = F - proposed * W_init;
+    Eigen::MatrixXd rowVar = F - proposed * B;
+
+    for (int l=0; l<numGroups; l++) {
+      if (rowVar(l, l) == 0)
+        rowVar(l, l) = 1;
+    }
+
     Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
     double num = stan::math::beta_lpdf(proposed, alpha, beta) +
                  stan::math::matrix_normal_prec_lpdf(
@@ -240,7 +291,13 @@ void SpatialMixtureSampler::sampleRho() {
                     meanMat, rowVar, SigmaInv) +
                  utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1.0);
 
-    rowVar = F - curr * W_init;
+    rowVar = F - curr * B;
+
+    for (int l=0; l<numGroups; l++) {
+      if (rowVar(l, l) == 0)
+        rowVar(l, l) = 1;
+    }
+
     double den = stan::math::beta_lpdf(curr, alpha, beta) +
                  stan::math::matrix_normal_prec_lpdf(
                     utils::removeColumn(transformed_weights, numComponents -1),
@@ -312,6 +369,89 @@ void SpatialMixtureSampler::computeRegressionResiduals() {
         }
         start += samplesPerGroup[i];
     }
+}
+
+void SpatialMixtureSampler::sampleB() {
+
+    Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
+    for (int i=0; i<numGroups; i++) {
+      for (int k=0; k<neigh[i].size(); k++){
+          int j=neigh[i][k];
+          // if (j>i){
+          //     continue;
+          // }
+          double p1, p0;
+
+          // Compute p1;
+
+          Eigen::MatrixXd newB = B;
+          Eigen::MatrixXd newF = Eigen::MatrixXd::Zero(numGroups, numGroups);
+          newB(i, j) = 1;
+          newB(j, i) = 1;
+          for (int l=0; l<numGroups; l++) {
+            newF(l, l) = newB.row(l).sum();
+          }
+          Eigen::MatrixXd AUX_1 = newF - rho * newB;
+
+          for (int l=0; l<numGroups; l++) {
+            if (AUX_1(l, l) == 0)
+              AUX_1(l, l) = 1;
+          }
+
+          p1 = stan::math::matrix_normal_prec_lpdf(
+                  utils::removeColumn(transformed_weights, numComponents -1),
+                  meanMat, AUX_1, SigmaInv);
+          p1 -=  pairwise_diss[i][j].dot(bound_coeff);
+          p1 = exp(p1);
+
+          // Compute p0;
+
+          newB(i, j) = 0;
+          newB(j, i) = 0;
+          for (int l=0; l<numGroups; l++) {
+            newF(l, l) = newB.row(l).sum();
+            if (newF(l, l) == 0)
+              newF(l, l) = 1;
+          }
+          Eigen::MatrixXd AUX_0 = newF - rho * newB;
+
+          for (int l=0; l<numGroups; l++) {
+            if (AUX_0(l, l) == 0)
+              AUX_0(l, l) = 1;
+          }
+
+          p0 = stan::math::matrix_normal_prec_lpdf(
+              utils::removeColumn(transformed_weights, numComponents -1),
+              meanMat, AUX_0, SigmaInv);
+          p0 = exp(p0);
+
+          p_bern(i, j) = p1 / (p1 + p0);
+          p_bern(j, i) = p1 / (p1 + p0);
+
+          coin_toss=stan::math::bernoulli_rng(p_bern(i, j), rng);
+
+          //aggiorno F e poi B
+          B(i, j) = coin_toss;
+          B(j, i) = coin_toss;
+
+          for (int l=0; l<numGroups; l++) {
+            F(l, l) = B.row(l).sum();
+          }
+      }
+    }
+
+    //aggiorno e normalizzo W
+    W = B;
+
+    for (int i=0; i < W.rows(); ++i)
+      if (F(i,i)>0)
+      W.row(i) *= rho/F(i, i);
+
+}
+
+
+void SpatialMixtureSampler::sampleBoundaryCoeffs() {
+      bound_coeff = bound_coeff*1;
 }
 
 void SpatialMixtureSampler::_computeInvSigmaH() {
@@ -389,6 +529,9 @@ void SpatialMixtureSampler::printDebugString() {
     }
 
     std::cout << "Sigma: \n" << Sigma << std::endl << std::endl;
+    std::cout << "Boundaries: \n" << B << std::endl << std::endl;
+    std::cout << "Parameters of Boundaries: \n" << p_bern << std::endl << std::endl;
+
 
     for (int h=0; h < numComponents; h++) {
         std::cout << "### Component #" << h << std::endl;

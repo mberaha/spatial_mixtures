@@ -8,7 +8,7 @@ SPIKES_DIR := $(SRC_DIR)/spikes
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
-	-O3 \
+	-g \
 	-MMD \
 	-I$(STAN_ROOT_DIR) \
 	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
@@ -20,7 +20,7 @@ CFLAGS = \
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -O3 -D_REENTRANT
+LDFLAGS = -g -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
@@ -32,6 +32,8 @@ OBJS = $(subst .cpp,.o, $(SRCS))
 
 SPIKES_EXECS = $(subst .cpp,.out, $(SPIKES_SRCS))
 SPIKES_OBJS =  $(subst .cpp,.o, $(SPIKES_SRCS))
+
+ALL_OBJS = $(OBJS) $(SPIKES_OBJS)
 
 info:
 	@echo " Info..."
@@ -72,7 +74,7 @@ run_hdp_from_file.o:
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
--include $(OBJS:%.o=%.d)
+-include $(ALL_OBJS:%.o=%.d)
 
 clean:
 	rm $(OBJS) $(SPIKES_OBJS) run_from_file.o

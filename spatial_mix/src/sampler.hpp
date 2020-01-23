@@ -7,6 +7,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <Eigen/Dense>
+// #include <cstdlib>
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
 #include "sampler_params.pb.h"
@@ -43,6 +44,21 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd W;
      Eigen::MatrixXd SigmaInv;
      Eigen::MatrixXd F;
+
+     // Boundary Detection
+     int numMetrics; // numero di metriche di dissimiglianza tra le locations
+     int coin_toss; // mi salvo l'esito della bernoulli del boundary
+     std::vector<std::vector<int>> neigh; // per ogni location i suoi potenziali
+     //da dare in input perchè in python è easy.
+     std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> diss_metrics;
+     // vettore di matrici: ogni posto del vettore contiene la dissimilarity
+     // matrix della metrica k-esima
+     Eigen::VectorXd bound_coeff; // gli alpha
+     Eigen::MatrixXd p_bern; // salvo i parametri delle bernoulli dei boundary
+     Eigen::MatrixXd B; //matrice dei boundaries
+     Eigen::MatrixXd aux_boundary; // matrice ausiliaria per la matrix norm
+     std::vector<std::vector<Eigen::VectorXd>> pairwise_diss;
+
 
      // Regression
      bool regression = false;
@@ -81,12 +97,17 @@ class SpatialMixtureSampler {
      SpatialMixtureSampler(
         const SamplerParams &_params,
         const std::vector<std::vector<double>> &_data,
-        const Eigen::MatrixXd &W);
+        const Eigen::MatrixXd &W,
+        const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
+        const std::vector<std::vector<int>> &_neigh);
 
     SpatialMixtureSampler(
        const SamplerParams &_params,
        const std::vector<std::vector<double>> &_data,
-       const Eigen::MatrixXd &W, const std::vector<Eigen::MatrixXd> &X);
+       const Eigen::MatrixXd &W,
+       const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
+       const std::vector<std::vector<int>> &_neigh,
+       const std::vector<Eigen::MatrixXd> &X);
 
     ~SpatialMixtureSampler() {
         delete(pg_rng);
@@ -128,6 +149,10 @@ class SpatialMixtureSampler {
     void regress();
 
     void computeRegressionResiduals();
+
+    void sampleB();
+
+    void sampleBoundaryCoeffs();
 
     void _computeInvSigmaH();
 
