@@ -6,7 +6,9 @@
 #include <vector>
 #include <numeric>
 #include <stdexcept>
+#include <Eigen/Core>
 #include <Eigen/Dense>
+#include <unsupported/Eigen/KroneckerProduct>
 // #include <cstdlib>
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
@@ -91,6 +93,8 @@ class SpatialMixtureSampler {
      // diagnostic for the MH sampler
      int numAccepted = 0;
 
+     bool verbose = false;
+
  public:
      SpatialMixtureSampler() {}
 
@@ -168,6 +172,10 @@ class SpatialMixtureSampler {
     UnivariateState getStateAsProto();
 
     void printDebugString();
+
+    void set_verbose() { verbose = true;}
+
+    void unset_verbose() {verbose = false;}
 
     const int& getNumAccepted() {return numAccepted;}
 };

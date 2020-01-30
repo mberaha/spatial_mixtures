@@ -57,39 +57,22 @@ int main() {
             }
         }
         else {
-            if (i==1){
-              std::cout << "Creo il gruppo: " << i <<
-              " dalla seconda distrizione "<<std::endl;
-              for (int j=0; j < numSamples; j++) {
-                  Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
-                  double err;
-                  double u = stan::math::uniform_rng(0.0, 1.0, rng);
-                  if(u < 0.2)
-                      err = stan::math::normal_rng(-2.5, 1.0, rng);
-                  else
-                      err = stan::math::normal_rng(2.5, 1.0, rng);
 
-                  data[i][j] = x.transpose() * beta + err;
-                  regressors[i].row(j) = x;
-              }
-            }
+          std::cout << "Creo il gruppo: " << i <<
+          " dalla terza distribuzione "<<std::endl;
 
-            else {
-              std::cout << "Creo il gruppo: " << i <<
-              " dalla terza distribuzione "<<std::endl;
+          for (int j=0; j < numSamples; j++) {
+              Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
+              double err;
+              double u = stan::math::uniform_rng(0.0, 1.0, rng);
+              if(u < 0.8)
+                  err = stan::math::normal_rng(-2.5, 1.0, rng);
+              else
+                  err = stan::math::normal_rng(2.5, 1.0, rng);
 
-              for (int j=0; j < numSamples; j++) {
-                  Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
-                  double err;
-                  double u = stan::math::uniform_rng(0.0, 1.0, rng);
-                  if(u < 0.8)
-                      err = stan::math::normal_rng(-2.5, 1.0, rng);
-                  else
-                      err = stan::math::normal_rng(2.5, 1.0, rng);
+              data[i][j] = x.transpose() * beta + err;
+              regressors[i].row(j) = x;
 
-                  data[i][j] = x.transpose() * beta + err;
-                  regressors[i].row(j) = x;
-              }
             }
         }
     }
@@ -126,7 +109,7 @@ int main() {
     // Eigen::MatrixXd W = Eigen::MatrixXd::Zero(3, 3);
 
     SamplerParams params = loadTextProto<SamplerParams>(
-        "/home/pego/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
+        "/home/mario/PhD/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
     std::cout << params.DebugString() << std::endl;
 
     SpatialMixtureSampler spSampler(params, data, W, metrics, _neigh);
@@ -136,11 +119,12 @@ int main() {
     spSampler.printDebugString();
 
     std::cout<<"Starting sampling"<<std::endl;
-    for (int i=0; i < 1000; i++) {
+    for (int i=0; i < 5000; i++) {
         spSampler.sample();
     }
     spSampler.printDebugString();
-    for (int i=0; i < 1000; i++) {
+    // spSampler.set_verbose();
+    for (int i=0; i < 5000; i++) {
         spSampler.sample();
         if ((i+1) % 10 == 0) {
             chains.push_back(spSampler.getStateAsProto());
@@ -148,8 +132,8 @@ int main() {
     }
 
     spSampler.printDebugString();
-    // writeManyToFile(chains, "chains_now2.dat");
-    // std::cout << "Done" << std::endl;
+    writeManyToFile(chains, "chains_boundaries.recordio");
+    std::cout << "Done" << std::endl;
     //
     //
     // std::deque<UnivariateState> restored;

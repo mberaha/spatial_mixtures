@@ -30,6 +30,8 @@ message UnivariateState {
   EigenMatrix Sigma = 5;
 
   repeated double regression_coefficients = 6 [packed=true];
+
+  EigenMatrix boundaries = 7;
 }
 
 
@@ -54,4 +56,5 @@ message HdpState {
   HyperParams hyper_params = 5;
   double alpha = 6;
   double gamma = 7;
+
 }

@@ -82,7 +82,7 @@ void SpatialMixtureSampler::init() {
     beta = params.rho_params().b();
 
     // Now proper initialization
-    rho = 0.9;
+    rho = 0.99;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -162,18 +162,12 @@ void SpatialMixtureSampler::sample()  {
         computeRegressionResiduals();
     }
     sampleAtoms();
-    // std::cout<<"Atoms done"<<std::endl;
     sampleAllocations();
-    // std::cout<<"Alloc done"<<std::endl;
-    sampleWeights();
-    // std::cout<<"Weights done"<<std::endl;
-    //sampleSigma();
-    // std::cout<<"Sigma done"<<std::endl;
-    //sampleRho();
-    // std::cout<<"Rho done"<<std::endl;
     sampleB();
-    // std::cout<<"B done"<<std::endl;
-    sampleBoundaryCoeffs();
+    sampleWeights();
+    //sampleSigma();
+    //sampleRho();
+    // sampleBoundaryCoeffs();
 }
 
 
@@ -373,13 +367,24 @@ void SpatialMixtureSampler::computeRegressionResiduals() {
 
 void SpatialMixtureSampler::sampleB() {
 
-    Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
+    Eigen::VectorXd meanVec = Eigen::VectorXd::Zero(
+        numGroups * (numComponents - 1));
+
+    Eigen::MatrixXd temp = utils::removeColumn(
+        transformed_weights, numComponents -1).transpose();
+    Eigen::VectorXd vectorizedWeights(Eigen::Map<Eigen::VectorXd>(
+        temp.data(), temp.size()));
+
+    if (verbose) {
+        std::cout << "transformed_weights: \n" <<
+                  utils::removeColumn(transformed_weights, numComponents -1) << std::endl;
+    }
     for (int i=0; i<numGroups; i++) {
       for (int k=0; k<neigh[i].size(); k++){
           int j=neigh[i][k];
-          // if (j>i){
-          //     continue;
-          // }
+          if (j > i){
+              continue;
+          }
           double p1, p0;
 
           // Compute p1;
@@ -398,20 +403,22 @@ void SpatialMixtureSampler::sampleB() {
               AUX_1(l, l) = 1;
           }
 
-          p1 = stan::math::matrix_normal_prec_lpdf(
-                  utils::removeColumn(transformed_weights, numComponents -1),
-                  meanMat, AUX_1, SigmaInv);
+          Eigen::MatrixXd prec1 = kroneckerProduct(AUX_1, SigmaInv);
+
+          p1 = stan::math::multi_normal_prec_lpdf(
+                  vectorizedWeights, meanVec, prec1);
           p1 -=  pairwise_diss[i][j].dot(bound_coeff);
-          p1 = exp(p1);
+          if (verbose) {
+              std::cout << "i: " << i << ", j: " << j << ", log_p1: " << p1 << ", ";
+          }
+
+          // p1 = exp(p1);
 
           // Compute p0;
-
           newB(i, j) = 0;
           newB(j, i) = 0;
           for (int l=0; l<numGroups; l++) {
             newF(l, l) = newB.row(l).sum();
-            if (newF(l, l) == 0)
-              newF(l, l) = 1;
           }
           Eigen::MatrixXd AUX_0 = newF - rho * newB;
 
@@ -420,32 +427,44 @@ void SpatialMixtureSampler::sampleB() {
               AUX_0(l, l) = 1;
           }
 
-          p0 = stan::math::matrix_normal_prec_lpdf(
-              utils::removeColumn(transformed_weights, numComponents -1),
-              meanMat, AUX_0, SigmaInv);
-          p0 = exp(p0);
+          Eigen::MatrixXd prec0 = kroneckerProduct(AUX_0, SigmaInv);
+          p0 = stan::math::multi_normal_prec_lpdf(
+              vectorizedWeights, meanVec, prec0);
+          if (verbose) {
+              std::cout << "log_p0: " << p0 << ", ";
+          }
 
-          p_bern(i, j) = p1 / (p1 + p0);
-          p_bern(j, i) = p1 / (p1 + p0);
+          // p0 = exp(p0);
 
-          coin_toss=stan::math::bernoulli_rng(p_bern(i, j), rng);
+          p1 = 1.0 / (1 + std::exp(p0 - p1));
+          if (verbose) {
+              std::cout << "p1: " << p1 << ", ";
+          }
 
+          p_bern(i, j) = p1;
+          p_bern(j, i) = p1;
+
+          coin_toss=stan::math::bernoulli_rng(p1, rng);
+          if (verbose) {
+              std::cout << "coin_toss: " << coin_toss << std::endl;
+              std::cout << "AUX_1: \n" << AUX_1 << std::endl;
+              std::cout << "AUX_0: \n" << AUX_0 << std::endl;
+          }
           //aggiorno F e poi B
           B(i, j) = coin_toss;
           B(j, i) = coin_toss;
 
-          for (int l=0; l<numGroups; l++) {
-            F(l, l) = B.row(l).sum();
-          }
       }
     }
 
     //aggiorno e normalizzo W
     W = B;
 
-    for (int i=0; i < W.rows(); ++i)
+    for (int i=0; i < W.rows(); ++i) {
+      F(i, i) = W.row(i).sum();
       if (F(i,i)>0)
-      W.row(i) *= rho/F(i, i);
+            W.row(i) *= rho/F(i, i);
+      }
 
 }
 
@@ -506,6 +525,11 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
     if (regression)
         *state.mutable_regression_coefficients() = {
             reg_coeff.data(), reg_coeff.data() + p_size};
+
+    state.mutable_boundaries() -> set_rows(B.rows());
+    state.mutable_boundaries() -> set_cols(B.cols());
+    *state.mutable_boundaries() -> mutable_data() = {
+        B.data(), B.data() + B.size() };
     return state;
 }
 
