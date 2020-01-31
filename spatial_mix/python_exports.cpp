@@ -15,14 +15,16 @@
 
 namespace py = pybind11;
 
+typedef Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic> array;
 
 std::deque<py::bytes> _runSpatialSampler(
         int burnin, int niter, int thin,
         const std::vector<std::vector<double>> &data,
         const Eigen::MatrixXd &W, const SamplerParams &params,
+        const std::vector<array> &metrics,
         const std::vector<Eigen::MatrixXd> &covariates) {
 
-    SpatialMixtureSampler spSampler(params, data, W, covariates);
+    SpatialMixtureSampler spSampler(params, data, W, metrics, covariates);
     spSampler.init();
 
     std::deque<py::bytes> out;
@@ -51,12 +53,14 @@ std::deque<py::bytes> _runSpatialSampler(
 std::deque<py::bytes> runSpatialSamplerPythonFromFiles(
         int burnin, int niter, int thin,
         std::string infile, std::string w_file, std::string params_file,
+        const std::vector<array> &metrics,
         const std::vector<Eigen::MatrixXd> &covariates) {
 
     Eigen::MatrixXd W = utils::readMatrixFromCSV(w_file);
     std::vector<std::vector<double>> data = utils::readDataFromCSV(infile);
     SamplerParams params = loadTextProto<SamplerParams>(params_file);
-    return _runSpatialSampler(burnin, niter, thin, data, W, params, covariates);
+    return _runSpatialSampler(
+        burnin, niter, thin, data, W, params, metrics, covariates);
 }
 
 
@@ -65,11 +69,13 @@ std::deque<py::bytes> runSpatialSamplerPythonFromData(
         const std::vector<std::vector<double>> &data,
         const Eigen::MatrixXd &W,
         std::string serialized_params,
+        const std::vector<array> &metrics,
         const std::vector<Eigen::MatrixXd> &covariates) {
 
     SamplerParams params;
     params.ParseFromString(serialized_params);
-    return _runSpatialSampler(burnin, niter, thin, data, W, params, covariates);
+    return _runSpatialSampler(
+        burnin, niter, thin, data, W, params, metrics, covariates);
 }
 
 

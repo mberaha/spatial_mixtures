@@ -80,7 +80,7 @@ def getDeserialized(serialized, objType):
 
 
 def runSpatialMixtureSampler(
-        burnin, niter, thin, W, params, data, covariates=[]):
+        burnin, niter, thin, W, params, data, dissimilarities=[], covariates=[]):
 
     def checkFromFiles(data, W):
         return isinstance(data, str) and isinstance(W, str)
@@ -102,13 +102,13 @@ def runSpatialMixtureSampler(
     serializedChains = []
     if checkFromFiles(data, W):
         serializedChains = spmixtures.runSpatialSamplerFromFiles(
-            burnin, niter, thin, data, W, params)
+            burnin, niter, thin, data, W, params, dissimilarities, covariates)
 
     elif checkFromData(data, W):
         params = maybeLoadParams(params)
         serializedChains = spmixtures.runSpatialSamplerFromData(
             burnin, niter, thin, data, W, params.SerializeToString(),
-            covariates)
+            dissimilarities, covariates)
 
     else:
         logging.error("Data type not understood")

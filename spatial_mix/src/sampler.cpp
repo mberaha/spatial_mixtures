@@ -25,10 +25,8 @@ SpatialMixtureSampler::SpatialMixtureSampler(
         const std::vector<std::vector<double>> &_data,
         const Eigen::MatrixXd &W,
         const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
-        const std::vector<std::vector<int>> &_neigh,
         const std::vector<Eigen::MatrixXd> &X):
-            params(_params), data(_data), W_init(W), diss_metrics(metrics),
-            neigh(_neigh) {
+            params(_params), data(_data), W_init(W), diss_metrics(metrics) {
     numGroups = data.size();
     samplesPerGroup.resize(numGroups);
     for (int i=0; i < numGroups; i++) {
@@ -36,6 +34,19 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     }
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
+
+    if (metrics.size() > 0) {
+        boundary = true;
+        neigh.resize(numGroups);
+        for (int i=0; i < numGroups; i++) {
+            std::vector<int> curr;
+            for (int j=0; j < numGroups; j++) {
+                if (W_init(i, j) > 0)
+                    curr.push_back(j);
+            }
+            neigh[i] = curr;
+        }
+    }
 
     if (X.size() > 0) {
         regression = true;
@@ -113,24 +124,26 @@ void SpatialMixtureSampler::init() {
     }
 
     // Boundary initialization
-    B = W_init;
-    p_bern = Eigen::MatrixXd::Zero(numGroups, numGroups);
-    numMetrics = diss_metrics.size();
-    bound_coeff = Eigen::VectorXd::Zero(numMetrics);
-    for (int k=0; k<numMetrics; k++) {
-      double c = normal_rng(0.0, 1.0, rng);
-        bound_coeff[k] = stan::math::abs(c);
-    }
+    if (boundary) {
+        B = W_init;
+        p_bern = Eigen::MatrixXd::Zero(numGroups, numGroups);
+        numMetrics = diss_metrics.size();
+        bound_coeff = Eigen::VectorXd::Zero(numMetrics);
+        for (int k=0; k<numMetrics; k++) {
+          double c = normal_rng(0.0, 1.0, rng);
+            bound_coeff[k] = stan::math::abs(c);
+        }
 
-    pairwise_diss.resize(numGroups);
-    for (int i=0; i < numGroups; i++)
-      pairwise_diss[i].resize(numGroups);
+        pairwise_diss.resize(numGroups);
+        for (int i=0; i < numGroups; i++)
+          pairwise_diss[i].resize(numGroups);
 
-    for (int i=0; i < numGroups; i++){
-        for (int j=0; j < numGroups; j++){
-            pairwise_diss[i][j]=Eigen::VectorXd::Zero(numMetrics);
-            for (int k=0; k < numMetrics; k++){
-                pairwise_diss[i][j](k) = diss_metrics[k](i,j);
+        for (int i=0; i < numGroups; i++){
+            for (int j=0; j < numGroups; j++){
+                pairwise_diss[i][j]=Eigen::VectorXd::Zero(numMetrics);
+                for (int k=0; k < numMetrics; k++){
+                    pairwise_diss[i][j](k) = diss_metrics[k](i,j);
+                }
             }
         }
     }
@@ -163,11 +176,13 @@ void SpatialMixtureSampler::sample()  {
     }
     sampleAtoms();
     sampleAllocations();
-    sampleB();
+    if (boundary) {
+        sampleB();
+        sampleBoundaryCoeffs();
+    }
     sampleWeights();
     //sampleSigma();
     //sampleRho();
-    // sampleBoundaryCoeffs();
 }
 
 
@@ -525,11 +540,12 @@ UnivariateState SpatialMixtureSampler::getStateAsProto() {
     if (regression)
         *state.mutable_regression_coefficients() = {
             reg_coeff.data(), reg_coeff.data() + p_size};
-
-    state.mutable_boundaries() -> set_rows(B.rows());
-    state.mutable_boundaries() -> set_cols(B.cols());
-    *state.mutable_boundaries() -> mutable_data() = {
-        B.data(), B.data() + B.size() };
+    if (boundary) {
+        state.mutable_boundaries() -> set_rows(B.rows());
+        state.mutable_boundaries() -> set_cols(B.cols());
+        *state.mutable_boundaries() -> mutable_data() = {
+            B.data(), B.data() + B.size() };
+    }
     return state;
 }
 

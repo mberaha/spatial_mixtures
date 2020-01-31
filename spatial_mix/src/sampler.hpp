@@ -18,6 +18,7 @@
 #include "mcmc_utils.hpp"
 #include "utils.hpp"
 
+typedef Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic> array;
 
 class SpatialMixtureSampler {
  protected:
@@ -48,11 +49,12 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd F;
 
      // Boundary Detection
+     bool boundary = false;
      int numMetrics; // numero di metriche di dissimiglianza tra le locations
      int coin_toss; // mi salvo l'esito della bernoulli del boundary
      std::vector<std::vector<int>> neigh; // per ogni location i suoi potenziali
      //da dare in input perchè in python è easy.
-     std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> diss_metrics;
+     std::vector<array> diss_metrics;
      // vettore di matrici: ogni posto del vettore contiene la dissimilarity
      // matrix della metrica k-esima
      Eigen::VectorXd bound_coeff; // gli alpha
@@ -110,7 +112,6 @@ class SpatialMixtureSampler {
        const std::vector<std::vector<double>> &_data,
        const Eigen::MatrixXd &W,
        const std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> &metrics,
-       const std::vector<std::vector<int>> &_neigh,
        const std::vector<Eigen::MatrixXd> &X);
 
     ~SpatialMixtureSampler() {
