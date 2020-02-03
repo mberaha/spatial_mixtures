@@ -104,10 +104,13 @@ void SpatialMixtureSampler::init() {
         cluster_allocs[i].resize(samplesPerGroup[i]);
     }
 
-    for (int h=0; h < numComponents; h++) {
-        means[h] = normal_rng(0.0, 10.0, rng);
-        stddevs[h] = uniform_rng(0.5, 2.0, rng);
-    }
+    // for (int h=0; h < numComponents; h++) {
+    //     means[h] = normal_rng(0.0, 10.0, rng);
+    //     stddevs[h] = uniform_rng(0.5, 2.0, rng);
+    // }
+    Eigen::VectorXd medie = Eigen::VectorXd::LinSpaced(numComponents, -10, 10);
+    means = std::vector<double>(medie.data(), medie.data() + numComponents);
+    stddevs = std::vector<double>(numComponents, 1.0);
 
     for (int i=0; i < numGroups; i++) {
         weights.row(i) = dirichlet_rng(
