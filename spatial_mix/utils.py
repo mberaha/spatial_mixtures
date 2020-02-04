@@ -7,6 +7,7 @@ import sys
 from google.protobuf import text_format
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
+from scipy.integrate import simps
 
 from spatial_mix.protos.py.sampler_params_pb2 import SamplerParams
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
@@ -79,6 +80,22 @@ def getDeserialized(serialized, objType):
     return out
 
 
+def hellinger_dist(p, q, xgrid):
+    return 1 - simps(np.sqrt(p * q), xgrid)
+
+
+def post_hellinger_dist(estimatedDens, true, xgrid):
+    return list(map(lambda x: hellinger_dist(x, true, xgrid)), estimatedDens)
+
+
+def kl_div(p, q, xgrid):
+    return simps(p * np.log(p + 1e-5) - np.log(q + 1e-5), xgrid)
+
+
+def post_kl_div(estimatedDens, true, xgrid):
+    return list(map(lambda x: kl_div(true, x, xgrid)), estimatedDens)
+
+
 def runSpatialMixtureSampler(
         burnin, niter, thin, W, params, data, covariates=[]):
 
@@ -86,9 +103,11 @@ def runSpatialMixtureSampler(
         return isinstance(data, str) and isinstance(W, str)
 
     def checkFromData(data, W):
-        return isinstance(data, list) and \
-                all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
-                isinstance(W, (np.ndarray, np.generic))
+        return isinstance(data, list)
+
+        # return isinstance(data, list) and \
+        #         all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
+        #         isinstance(W, (np.ndarray, np.generic))
 
     def maybeLoadParams(mayeParams):
         if not isinstance(mayeParams, str):
