@@ -103,11 +103,9 @@ def runSpatialMixtureSampler(
         return isinstance(data, str) and isinstance(W, str)
 
     def checkFromData(data, W):
-        return isinstance(data, list)
-
-        # return isinstance(data, list) and \
-        #         all(isinstance(x, (np.ndarray, np.generic)) for x in data) and \
-        #         isinstance(W, (np.ndarray, np.generic))
+        return isinstance(data, list) and \
+                all(isinstance(x, list) for x in data) and \
+                isinstance(W, (np.ndarray, np.generic))
 
     def maybeLoadParams(mayeParams):
         if not isinstance(mayeParams, str):
@@ -121,7 +119,7 @@ def runSpatialMixtureSampler(
     serializedChains = []
     if checkFromFiles(data, W):
         serializedChains = spmixtures.runSpatialSamplerFromFiles(
-            burnin, niter, thin, data, W, params)
+            burnin, niter, thin, data, W, params, covariates)
 
     elif checkFromData(data, W):
         params = maybeLoadParams(params)
