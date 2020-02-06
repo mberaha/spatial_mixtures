@@ -37,11 +37,10 @@ def loadChains(filename, msgType=UnivariateState):
     return out
 
 
-def estimateDensity(weights, atoms, xgrid):
-    out = np.zeros(len(xgrid))
-    for h, atom in enumerate(atoms):
-        out += weights[h] * norm.pdf(xgrid, atom.mean, atom.stdev)
-    return out
+def estimateDensity(weights, means, stdevs, xgrid):
+    return np.dot(norm.pdf(
+        np.hstack([xgrid.reshape(-1, 1)] * len(means)), means, stdevs),
+                  weights)
 
 
 def _aux(state, g, xgrid):
@@ -58,13 +57,25 @@ def estimateDensities(chains, xgrids, nproc=-1):
         nproc = multiprocessing.cpu_count() - 1
 
     out = []
-    for g in range(numGroups):
-        curr = np.zeros((numIters, len(xgrids[g])))
-        for i in range(numIters):
-            curr[i, :] = estimateDensity(
-                chains[i].groupParams[g].weights, chains[i].atoms, xgrids[g])
+    num_components = chains[0].num_components
+    means_chain = np.vstack(
+        [list(map(lambda x: x.mean, state.atoms)) for state in chains]
+        ).reshape(-1)
+    stdevs_chain = np.vstack(
+        [list(map(lambda x: x.stdev, state.atoms)) for state in chains]
+        ).reshape(-1)
 
-        out.append(curr)
+    for g in range(numGroups):
+        weights_chain = np.vstack(
+            [state.groupParams[g].weights for state in chains])
+
+        eval_normals = norm.pdf(np.hstack([xgrids[g].reshape(-1, 1)] * means_chain.shape[0]),
+                                means_chain,
+                                stdevs_chain
+                                ).reshape(len(xgrids[g]),
+                                          numIters,
+                                          num_components)
+        out.append(np.sum(eval_normals*weights_chain, axis=-1).T)
     return out
 
 
