@@ -8,6 +8,10 @@ def estimateDensity(cluster_sizes, betas, atoms, params, xgrid):
     out = np.zeros(len(xgrid))
     weights = np.zeros(len(atoms))
     ntot = sum(cluster_sizes)
+    lam = params["priorLambda"]
+    mu0 = params["priorMean"]
+    a = params["priorA"]
+    b = params["priorB"]
     for h in range(len(atoms)):
         weights[h] = cluster_sizes[h] + params["alpha"] * betas[h]
 
@@ -16,14 +20,13 @@ def estimateDensity(cluster_sizes, betas, atoms, params, xgrid):
     for h, atom in enumerate(atoms):
         out += weights[h] * norm.pdf(xgrid, atom.mean, atom.stdev)
 
-    # TODO: rough approximation, still better than nothing
-    tau = gamma.rvs(params["priorA"], 1 / params["priorB"])
-    mean = norm.rvs(
-        params["priorMean"], 1.0 / np.sqrt(params["priorLambda"] * tau))
-    out += params["alpha"] * betas[-1] / (ntot + params["alpha"]) * norm.pdf(
-        xgrid, mean, 1.0 / np.sqrt(tau))
-    # weights[len(atoms)] = params["alpha"] * betas[len(atoms)]
-    # out += weights[len(atoms)] * norm.pdf(xgrid, params)
+    bstar = xgrid ** 2 + lam * mu0 + \
+        2 * b - (xgrid + (lam * mu0) ** 2 / (1 + lam))
+
+    marg = 1 / (2 * np.pi) * b ** a * a * \
+        np.sqrt(lam / (1 + lam)) / (bstar ** (a + 1))
+
+    out += params["alpha"] * betas[-1] / (ntot + params["alpha"]) * marg
     return out
 
 
