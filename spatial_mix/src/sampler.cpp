@@ -29,6 +29,8 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
 
+    std::cout << "W \n" << W_init << std::endl;
+
     if (X.size() > 0) {
         regression = true;
         p_size = X[0].cols();
@@ -73,7 +75,7 @@ void SpatialMixtureSampler::init() {
     beta = params.rho_params().b();
 
     // Now proper initialization
-    rho = 0.5;
+    rho = 0.99;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -96,7 +98,7 @@ void SpatialMixtureSampler::init() {
     }
 
     for (int i=0; i < numGroups; i++) {
-        for (int j=0; j < numComponents; j++)
+        for (int j=0; j < std::min(numComponents, samplesPerGroup[i]); j++)
             cluster_allocs[i][j] = j;
 
         for (int j=numComponents; j<samplesPerGroup[i]; j++)
@@ -114,6 +116,8 @@ void SpatialMixtureSampler::init() {
         F(i, i) = W_init.row(i).sum();
     }
 
+    std::cout << "W \n" << W << std::endl;
+
     // compute inverses of sigma(-h,h))
     pippo.resize(numComponents - 1);
     sigma_star_h.resize(numComponents - 1);
@@ -130,7 +134,7 @@ void SpatialMixtureSampler::sample()  {
     sampleAllocations();
     sampleWeights();
     sampleSigma();
-    sampleRho();
+    // sampleRho();
 }
 
 
@@ -173,6 +177,7 @@ void SpatialMixtureSampler::sampleAllocations() {
             probas /= probas.sum();
             cluster_allocs[i][j] = categorical_rng(
                 probas, rng) - 1;
+            // std::cout << "datum: " << datum << ", c_mean: " << means[cluster_allocs[i][j]] << std::endl;
         }
     }
 }

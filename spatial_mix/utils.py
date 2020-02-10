@@ -92,7 +92,7 @@ def getDeserialized(serialized, objType):
 
 
 def hellinger_dist(p, q, xgrid):
-    return 1 - simps(np.sqrt(p * q), xgrid)
+    return 0.5 * simps(np.sqrt(p) - np.sqrt(q), xgrid) ** 2
 
 
 def post_hellinger_dist(estimatedDens, true, xgrid):

@@ -13,7 +13,10 @@
 int main() {
     std::cout << "Beginning" << std::endl;
     std::mt19937_64 rng;
+
+
     int numGroups = 5;
+    Eigen::VectorXd samples = Eigen::VectorXd::Zero(numGroups);
     int numSamples = 1000;
     std::cout << "numSamples: " << numSamples << std::endl;
     std::vector<std::vector<double>> data(numGroups);
@@ -21,6 +24,12 @@ int main() {
 
     std::vector <Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic>> metrics(2);
     std::vector<std::vector<int>> _neigh(numGroups);
+
+    samples[0] = numSamples;
+    samples[1] = numSamples;
+    samples[2] = numSamples;
+    samples[3] = numSamples;
+    samples[4] = numSamples;
 
     _neigh[0]={1,2,3,4};
     _neigh[1]={0,2,3,4};
@@ -37,13 +46,13 @@ int main() {
     Eigen::VectorXd x_mean = Eigen::VectorXd::Zero(4);
 
     for (int i=0; i < numGroups ; i++) {
-        data[i].resize(numSamples);
-        regressors[i].resize(numSamples, 4);
+        data[i].resize(samples[i]);
+        regressors[i].resize(samples[i], 4);
         if (i<2){
             std::cout << "Creo il gruppo: " << i <<
             " dalla prima distrizione "<<std::endl;
 
-            for (int j=0; j < numSamples; j++) {
+            for (int j=0; j < samples[i]; j++) {
                 Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
                 double err;
                 double nu = 6;
@@ -60,7 +69,7 @@ int main() {
             if (i==4){
               std::cout << "Creo il gruppo: " << i <<
               " dalla seconda distrizione "<<std::endl;
-              for (int j=0; j < numSamples; j++) {
+              for (int j=0; j < samples[i]; j++) {
                   Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
                   double err;
                   double ch_mu = 0;
@@ -79,7 +88,7 @@ int main() {
               double omega = 1;
               double alpha = 4;
 
-              for (int j=0; j < numSamples; j++) {
+              for (int j=0; j < samples[i]; j++) {
                   Eigen::VectorXd x = stan::math::multi_normal_rng(x_mean, sigma, rng);
                   double err;
                   err = stan::math::skew_normal_rng(skew_mean, omega, alpha, rng);
@@ -102,8 +111,9 @@ int main() {
 
     std::ofstream outfile;
     outfile.open("data_simulation_1.csv");
+    outfile << "Group,Data" << std::endl;
     for (int i = 0; i < numGroups; i++) {
-        for (int j=0; j < numSamples; j++) {
+        for (int j=0; j < data[i].size(); j++) {
             outfile << i << "," << data[i][j] << std::endl;
         }
     }

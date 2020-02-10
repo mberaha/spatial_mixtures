@@ -19,7 +19,7 @@ void HdpSampler::init() {
     priorMean = 0.0;
     priorA = 2.0;
     priorB = 2.0;
-    priorLambda = 0.1;
+    priorLambda = 0.5;
     alpha = 1.0;
     gamma = 1.0;
 
@@ -74,6 +74,16 @@ void HdpSampler::sampleAtoms() {
         double mu = stan::math::normal_rng(params[0], sigmaNorm, rng);
         means[h] = mu;
         stddevs[h] = 1.0 / std::sqrt(tau);
+        if (abs(mu) > 10 || stddevs[h] > 20) {
+          std::cout << "mu: " << mu << ", sd: " << stddevs[h] << ", postMean: " << params[0] <<
+                        ", postA: " << params[1] << ", postB: " << params[2] <<
+                        ", postLambda: " << params[3] << std::endl;
+          std::cout << "data:" << std::endl;
+          for (auto d: datavec[h])
+            std::cout << d << ", ";
+
+          std::cout << std::endl;
+        }
     }
 }
 
@@ -162,7 +172,7 @@ void HdpSampler::relabel() {
     for (auto it = toRemove.rbegin(); it != toRemove.rend(); it++) {
         means.erase(means.begin() + *it);
         stddevs.erase(stddevs.begin() + *it);
-        sizes.erase(sizes.begin() + * it);
+        sizes.erase(sizes.begin() + *it);
         for (int i=0; i < numGroups; i++)
             sizes_from_rest[i].erase(sizes_from_rest[i].begin() + *it);
     }
