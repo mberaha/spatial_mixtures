@@ -1,4 +1,4 @@
-#include <omp.h>
+// #include <omp.h>
 #include <string>
 
 #include "src/collector.hpp"
@@ -24,9 +24,9 @@ using namespace std;
   *
   */
 int main(int ac, char* av[]) {
-
-  omp_set_dynamic(0);     // Explicitly disable dynamic teams
-  omp_set_num_threads(omp_get_num_threads() - 1);
+  //
+  // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+  // omp_set_num_threads(omp_get_num_threads() - 1);
 
   std::string infile = av[1];
   std::string outfile = av[2];
