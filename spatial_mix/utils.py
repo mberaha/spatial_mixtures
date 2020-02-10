@@ -96,7 +96,8 @@ def hellinger_dist(p, q, xgrid):
 
 
 def post_hellinger_dist(estimatedDens, true, xgrid):
-    return list(map(lambda x: hellinger_dist(x, true, xgrid), estimatedDens))
+    return np.apply_along_axis(
+        lambda x: hellinger_dist(x, true, xgrid), 1, estimatedDens)
 
 
 def kl_div(p, q, xgrid):
@@ -104,7 +105,8 @@ def kl_div(p, q, xgrid):
 
 
 def post_kl_div(estimatedDens, true, xgrid):
-    return list(map(lambda x: kl_div(true, x, xgrid), estimatedDens))
+    return np.apply_along_axis(
+        lambda x: kl_div(x, true, xgrid), 1, estimatedDens)
 
 
 def runSpatialMixtureSampler(
