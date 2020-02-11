@@ -7,7 +7,7 @@ import sys
 from google.protobuf import text_format
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
-from scipy.integrate import simps
+from scipy.integrate import simps, trapz
 
 from spatial_mix.protos.py.sampler_params_pb2 import SamplerParams
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import UnivariateState
@@ -92,7 +92,7 @@ def getDeserialized(serialized, objType):
 
 
 def hellinger_dist(p, q, xgrid):
-    return 0.5 * simps(np.sqrt(p) - np.sqrt(q), xgrid) ** 2
+    return np.sqrt(0.5 * simps((np.sqrt(p) - np.sqrt(q))** 2, xgrid))
 
 
 def post_hellinger_dist(estimatedDens, true, xgrid):
