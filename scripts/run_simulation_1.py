@@ -138,32 +138,29 @@ if __name__ == "__main__":
     W[4, 5] = W[5, 4] = 1
 
     # first our model, in parallel
-    # groupedDatas = []
-    #
-    # for i in range(3):
-    #     curr = []
-    #     df = datas[i]
-    #     for g in range(ngroups):
-    #         curr.append(df[df['group'] == g]['datum'].values)
-    #     groupedDatas.append(curr)
-    #
-    # Parallel(n_jobs=nproc)(
-    #     delayed(run_spmix)(data, chain, dens) for data, chain, dens in zip(
-    #         groupedDatas, spmix_chains_filenames, spmix_dens_filenames))
-    #
-    # commands = []
-    # for i in range(3):
-    #     commands.append(" ".join([
-    #         "./spatial_mix/run_hdp_from_file.out",
-    #         data_filenames[i], hdp_chains_filenames[i]]).split())
-    #
-    # procs = [Popen(i) for i in commands]
-    #
-    # for p in procs:
-    #     p.wait()
+    groupedDatas = []
+
+    for i in range(3):
+        curr = []
+        df = datas[i]
+        for g in range(ngroups):
+            curr.append(df[df['group'] == g]['datum'].values)
+        groupedDatas.append(curr)
+
+    Parallel(n_jobs=nproc)(
+        delayed(run_spmix)(data, chain, dens) for data, chain, dens in zip(
+            groupedDatas, spmix_chains_filenames, spmix_dens_filenames))
+
+    commands = []
+    for i in range(3):
+        commands.append(" ".join([
+            "./spatial_mix/run_hdp_from_file.out",
+            data_filenames[i], hdp_chains_filenames[i]]).split())
+
+    procs = [Popen(i) for i in commands]
+
+    for p in procs:
+        p.wait()
 
     for i in range(3):
         analyze_hdp(hdp_chains_filenames[i], hdp_dens_filenames[i])
-    # Parallel(n_jobs=nproc)(
-    #     delayed(analyze_hdp)(chain, dens) for chain, dens in zip(
-    #         hdp_chains_filenames, hdp_dens_filenames))

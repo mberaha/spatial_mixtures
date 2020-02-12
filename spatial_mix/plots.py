@@ -1,10 +1,6 @@
 import numpy as np
 import pymc3 as pm
-import plotly
-import plotly.graph_objects as go
 
-
-# da cambiare in base al plot
 
 def density_plot(dens_chain, true_dens, xgrid, ax, title=""):
     ax.plot(xgrid, true_dens, color="orange",
