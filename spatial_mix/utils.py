@@ -5,6 +5,7 @@ import os
 import sys
 
 from google.protobuf import text_format
+from google.protobuf.internal.encoder import _VarintBytes
 from google.protobuf.internal.decoder import _DecodeVarint32
 from scipy.stats import norm
 from scipy.integrate import simps
@@ -35,6 +36,18 @@ def loadChains(filename, msgType=UnivariateState):
             break
 
     return out
+
+
+def writeChains(chains, filename):
+    with open(filename, "wb") as fp:
+        for c in chains:
+            try:
+                msgStr = c.SerializeToString()
+                delimiter = _VarintBytes(len(msgStr))
+                fp.write(delimiter + msgStr)
+            except Exception as e:
+                print(e)
+                break
 
 
 def estimateDensity(weights, means, stdevs, xgrid):
