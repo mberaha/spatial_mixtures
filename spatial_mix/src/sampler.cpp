@@ -43,10 +43,16 @@ SpatialMixtureSampler::SpatialMixtureSampler(
         V.resize(numdata);
         mu.resize(numdata);
         int start = 0;
+        std::cout << "H" << std::endl;
+        std::cout << "numGroups: " << numGroups << std::endl;
         for (int i=0; i < numGroups; i++) {
+            std::cout << "i: " << i << ", start: " << start << ", samples: "
+                      << samplesPerGroup[i] << std::endl;
             predictors.block(start, 0, samplesPerGroup[i], p_size) = X[i];
+            std::cout << "predictors ok" << std::endl;
             reg_data.segment(start, samplesPerGroup[i]) = \
                 Eigen::Map<Eigen::VectorXd>(data[i].data(), samplesPerGroup[i]);
+            std::cout << "reg data ok" << std::endl;
             start += samplesPerGroup[i];
         }
         computeRegressionResiduals();
@@ -119,6 +125,7 @@ void SpatialMixtureSampler::init() {
     sigma_star_h.resize(numComponents - 1);
 
     _computeInvSigmaH();
+    std::cout << "init done" << std::endl;
 }
 
 void SpatialMixtureSampler::sample()  {
@@ -156,6 +163,7 @@ void SpatialMixtureSampler::sampleAtoms()  {
         means[h] = mu;
         stddevs[h] = 1.0 / std::sqrt(tau);
     }
+    std::cout << "sample atoms done" << std::endl;
 }
 
 void SpatialMixtureSampler::sampleAllocations() {
@@ -175,6 +183,7 @@ void SpatialMixtureSampler::sampleAllocations() {
                 probas, rng) - 1;
         }
     }
+    std::cout << "sample allocations done" << std::endl;
 }
 
 void SpatialMixtureSampler::sampleWeights() {
@@ -222,6 +231,8 @@ void SpatialMixtureSampler::sampleWeights() {
     #pragma omp parallel for
     for (int i=0; i < numGroups; i++)
         transformed_weights.row(i) = utils::Alr(weights.row(i), true);
+
+    std::cout << "sample weights done" << std::endl;
 }
 
 
@@ -257,6 +268,8 @@ void SpatialMixtureSampler::sampleRho() {
           W.row(i) *= rho/W.row(i).sum();
         }
     }
+
+    std::cout << "sample rho done" << std::endl;
 }
 
 void SpatialMixtureSampler::sampleSigma() {
@@ -273,6 +286,8 @@ void SpatialMixtureSampler::sampleSigma() {
     }
     Sigma = inv_wishart_rng(nu_n, Vn, rng);
     _computeInvSigmaH();
+
+    std::cout << "sample sigma done" << std::endl;
 }
 
 void SpatialMixtureSampler::regress() {
@@ -299,9 +314,12 @@ void SpatialMixtureSampler::regress() {
         predictors.transpose() * V * (reg_data - mu));
 
     reg_coeff = stan::math::multi_normal_prec_rng(postMean, postPrec, rng);
+
+    std::cout << "regress done" << std::endl;
 }
 
 void SpatialMixtureSampler::computeRegressionResiduals() {
+    std::cout << "SpatialMixtureSampler::computeRegressionResiduals" << std::endl;
     Eigen::VectorXd residuals = reg_data - predictors * reg_coeff;
     int start = 0;
 
@@ -312,6 +330,8 @@ void SpatialMixtureSampler::computeRegressionResiduals() {
         }
         start += samplesPerGroup[i];
     }
+
+    std::cout << "computeRegressionResiduals done" << std::endl;
 }
 
 void SpatialMixtureSampler::_computeInvSigmaH() {
