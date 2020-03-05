@@ -7,6 +7,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <Eigen/Dense>
+#include <unsupported/Eigen/KroneckerProduct>
 #include "collector.hpp"
 #include "univariate_mixture_state.pb.h"
 #include "sampler_params.pb.h"

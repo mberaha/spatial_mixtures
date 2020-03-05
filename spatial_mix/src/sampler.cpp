@@ -79,7 +79,7 @@ void SpatialMixtureSampler::init() {
     beta = params.rho_params().b();
 
     // Now proper initialization
-    rho = 0.5;
+    rho = 0.9;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -236,24 +236,29 @@ void SpatialMixtureSampler::sampleWeights() {
 // We use a MH step with a truncated normal proposal
 void SpatialMixtureSampler::sampleRho() {
     double curr = rho;
-    double sigma = 0.1;
-    double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1.0, rng);
+    double sigma = 0.01;
+    double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1, rng);
+    Eigen::MatrixXd temp = utils::removeColumn(
+        transformed_weights, numComponents -1).transpose();
+    Eigen::VectorXd vectorizedWeights(Eigen::Map<Eigen::VectorXd>(
+        temp.data(), temp.size()));
+    Eigen::VectorXd meanVec = Eigen::VectorXd::Zero(numGroups * (numComponents - 1));
 
     // compute acceptance ratio
     Eigen::MatrixXd rowVar = F - proposed * W_init;
-    Eigen::MatrixXd meanMat = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
+
+    Eigen::MatrixXd prec = kroneckerProduct(rowVar, SigmaInv);
     double num = stan::math::beta_lpdf(proposed, alpha, beta) +
-                 stan::math::matrix_normal_prec_lpdf(
-                    utils::removeColumn(transformed_weights, numComponents -1),
-                    meanMat, rowVar, SigmaInv) +
-                 utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1.0);
+                 stan::math::multi_normal_prec_lpdf(
+                    vectorizedWeights, meanVec, prec) +
+                 utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1);
 
     rowVar = F - curr * W_init;
+    prec = kroneckerProduct(rowVar, SigmaInv);
     double den = stan::math::beta_lpdf(curr, alpha, beta) +
-                 stan::math::matrix_normal_prec_lpdf(
-                    utils::removeColumn(transformed_weights, numComponents -1),
-                    meanMat, rowVar, SigmaInv) +
-                 utils::trunc_normal_lpdf(curr, proposed, sigma, 0.0, 1.0);
+                  stan::math::multi_normal_prec_lpdf(
+                     vectorizedWeights, meanVec, prec) +
+                 utils::trunc_normal_lpdf(curr, proposed, sigma, 0.0, 1);
 
     double arate = std::min(1.0, std::exp(num-den));
     if (stan::math::uniform_rng(0.0, 1.0, rng) < arate) {
