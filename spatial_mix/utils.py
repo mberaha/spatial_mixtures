@@ -56,11 +56,6 @@ def estimateDensity(weights, means, stdevs, xgrid):
                   weights)
 
 
-def _aux(state, g, xgrid):
-    return estimateDensity(
-        state.groupParams[g].weights, state.atoms, xgrid)
-
-
 def estimateDensities(chains, xgrids, nproc=-1):
     numGroups = len(chains[0].groupParams)
     if not isinstance(xgrids, list):
