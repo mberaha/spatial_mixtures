@@ -1,4 +1,4 @@
-#include <omp.h>
+// #include <omp.h>
 #include <string>
 
 #include "src/collector.hpp"
@@ -27,8 +27,8 @@ using namespace std;
   */
 int main(int ac, char* av[]) {
 
-  omp_set_dynamic(0);     // Explicitly disable dynamic teams
-  omp_set_num_threads(omp_get_num_threads() - 1);
+  // omp_set_dynamic(0);     // Explicitly disable dynamic teams
+  // omp_set_num_threads(omp_get_num_threads() - 1);
 
   std::string infile = av[1];
   std::string w_file = av[2];
@@ -44,6 +44,9 @@ int main(int ac, char* av[]) {
 
   std::cout << "NumGroups: " << data.size() << std::endl;
 
+  for (int i = 0; i < data.size(); i++)
+    std::cout << "group: " << i << ", " << data[i].size() << std::endl;
+
   int burnin = 10000;
   int niter = 10000;
   int thin = 10;
@@ -55,7 +58,7 @@ int main(int ac, char* av[]) {
 
   SpatialMixtureSampler spSampler(params, data, W);
   spSampler.init();
-
+  std::cout << "init done" << std::endl;
   int log_every = 200;
 
   for (int i=0; i < burnin; i++) {
