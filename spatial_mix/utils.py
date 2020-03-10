@@ -109,7 +109,7 @@ def post_hellinger_dist(estimatedDens, true, xgrid):
 
 
 def kl_div(p, q, xgrid):
-    return simps(p * np.log(p + 1e-5) - np.log(q + 1e-5), xgrid)
+    return simps(p * (np.log(p + 1e-5) - np.log(q + 1e-5)), xgrid)
 
 
 def post_kl_div(estimatedDens, true, xgrid):
