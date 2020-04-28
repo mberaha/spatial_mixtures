@@ -4,6 +4,7 @@ PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
 STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
+PYTHON3 := /usr/bin/python3.8
 
 CXX = g++
 CFLAGS = \
@@ -53,8 +54,8 @@ $(SPIKES_OBJS): %.o: %.cpp
 		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
-	$(CXX) -shared $(CFLAGS) `python3 -m pybind11 --includes` \
-		python_exports.cpp -o spmixtures`python3-config --extension-suffix` \
+	$(CXX) -shared $(CFLAGS) `$(PYTHON3) -m pybind11 --includes` \
+		python_exports.cpp -o spmixtures`$(PYTHON3)-config --extension-suffix` \
 		$(OBJS) $(LDLIBS)
 
 run_from_file.out: run_from_file.o $(OBJS)
