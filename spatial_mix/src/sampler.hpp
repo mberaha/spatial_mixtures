@@ -64,6 +64,12 @@ class SpatialMixtureSampler {
      double alpha;
      double beta;
 
+     // adaptive MCMC for rho
+     double sigma_n_rho;
+     double rho_sum;
+     double rho_sum_sq;
+     int iter = 0;
+
      std::vector<Eigen::VectorXd> pippo;
      std::vector<double> sigma_star_h;
      // HyperParams for NormalGamma
@@ -75,6 +81,7 @@ class SpatialMixtureSampler {
 
      // diagnostic for the MH sampler
      int numAccepted = 0;
+
 
  public:
      SpatialMixtureSampler() {}

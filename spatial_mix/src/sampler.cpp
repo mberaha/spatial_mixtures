@@ -82,6 +82,8 @@ void SpatialMixtureSampler::init() {
 
     // Now proper initialization
     rho = 0.9;
+    rho_sum = 0;
+    rho_sum_sq = 0;
     Sigma = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
     means.resize(numComponents);
     stddevs.resize(numComponents);
@@ -141,7 +143,7 @@ void SpatialMixtureSampler::sample()  {
     sampleAllocations();
     sampleWeights();
     sampleSigma();
-    // sampleRho();
+    sampleRho();
 }
 
 
@@ -240,14 +242,28 @@ void SpatialMixtureSampler::sampleWeights() {
 
 // We use a MH step with a truncated normal proposal
 void SpatialMixtureSampler::sampleRho() {
+    iter += 1;
     double curr = rho;
-    double sigma = 0.01;
+    double sigma;
+    if (iter < 3) {
+        sigma = 0.01;
+    } else {
+        if (sigma_n_rho == 0)
+            sigma = 0.01;
+        else {
+            if (stan::math::uniform_rng(0.0, 1.0, rng) < 0.05)
+                sigma = 0.01;
+            else
+                sigma = 2.38 * sigma_n_rho;
+        }
+    }
     double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1, rng);
     Eigen::MatrixXd temp = utils::removeColumn(
         transformed_weights, numComponents -1).transpose();
     Eigen::VectorXd vectorizedWeights(Eigen::Map<Eigen::VectorXd>(
         temp.data(), temp.size()));
-    Eigen::VectorXd meanVec = Eigen::VectorXd::Zero(numGroups * (numComponents - 1));
+    Eigen::VectorXd meanVec = Eigen::VectorXd::Zero(
+        numGroups * (numComponents - 1));
 
     // compute acceptance ratio
     Eigen::MatrixXd rowVar = F - proposed * W_init;
@@ -275,6 +291,12 @@ void SpatialMixtureSampler::sampleRho() {
           W.row(i) *= rho/W.row(i).sum();
         }
     }
+
+    // update adaptive MCMC params
+    rho_sum += rho;
+    rho_sum_sq += rho * rho;
+    double rho_mean = rho_sum / iter;
+    sigma_n_rho = rho_sum_sq / iter - rho_mean * rho_mean;
 }
 
 void SpatialMixtureSampler::sampleSigma() {
