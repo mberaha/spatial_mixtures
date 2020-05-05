@@ -13,6 +13,12 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     }
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
+
+    node2comp = utils::findConnectedComponents(W_init);
+
+    // last component is not used!
+    mtildes = Eigen::MatrixXd::Zero(
+        std::max_element(node2comp) + 1, numComponents);
 }
 
 
@@ -121,7 +127,7 @@ void SpatialMixtureSampler::init() {
 
     F = Eigen::MatrixXd::Zero(numGroups, numGroups);
     for (int i=0; i < numGroups; i++) {
-        F(i, i) = W_init.row(i).sum();
+        F(i, i) = rho * W_init.row(i).sum() + (1 - rho);
     }
 
     std::cout << "W \n" << W << std::endl;
@@ -211,7 +217,10 @@ void SpatialMixtureSampler::sampleWeights() {
                 samplesPerGroup[i],
                 transformed_weights(i, h) - C_ih);
 
-            Eigen::VectorXd mu_i = W.row(i) * transformed_weights;
+            Eigen::VectorXd mu_i = \
+                (W_init.row(i) * transformed_weights).array() * rho + \
+                 mtildes.row(node2comp[i]).array() * (1- rho);
+            mu_i = mu_i.array() / (W_init.row(i).sum() * rho + 1 - rho);
             mu_i = mu_i.head(numComponents - 1);
             Eigen::VectorXd wtilde = transformed_weights.row(i).head(numComponents - 1);
 
@@ -262,8 +271,11 @@ void SpatialMixtureSampler::sampleRho() {
         transformed_weights, numComponents -1).transpose();
     Eigen::VectorXd vectorizedWeights(Eigen::Map<Eigen::VectorXd>(
         temp.data(), temp.size()));
-    Eigen::VectorXd meanVec = Eigen::VectorXd::Zero(
-        numGroups * (numComponents - 1));
+
+    Eigen::VectorXd meanVec(numGroups * (numComponents - 1));
+    for (int i=0; i < numGroups; i++)
+        meanVec.segment(i * (numComponents - 1), (numComponents - 1)) = \
+            mtildes.row(node2comp[i]).head(numComponents - 1).t();
 
     // compute acceptance ratio
     Eigen::MatrixXd rowVar = F - proposed * W_init;
@@ -288,7 +300,13 @@ void SpatialMixtureSampler::sampleRho() {
         W = W_init;
         // normalize W
         for (int i=0; i < W.rows(); ++i){
-          W.row(i) *= rho/W.row(i).sum();
+          W.row(i) *= rho / W.row(i).sum();
+        }
+
+        F = Eigen::MatrixXd::Zero(numGroups, numGroups);
+        for (int i = 0; i < numGroups; i++)
+        {
+            F(i, i) = rho * W_init.row(i).sum() + (1 - rho);
         }
     }
 
@@ -302,14 +320,18 @@ void SpatialMixtureSampler::sampleRho() {
 void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
+    Eigen::MatrixXd F_m_rhoG = F - W_init.array() * rho;
 
-    #pragma omp parallel for
+    #pragma omp parallel for collapse(2)
     for (int i=0; i < numGroups; i++) {
-        Eigen::VectorXd mu_i = W.row(i) * utils::removeColumn(
-            transformed_weights, numComponents-1);
-        Eigen::VectorXd wtilde_i = utils::removeElem(
-            transformed_weights.row(i), numComponents-1);
-        Vn += (wtilde_i - mu_i) * (wtilde_i - mu_i).transpose();
+        Eigen::VectorXd wtilde_i = transformed_weights.row(i).head(numComponents - 1);
+        Eigen::VectorXd mtilde_i = mtildes.row(node2comp[i]).head(numComponents - 1);
+        for (int j=0; j < numGroups; j++) 
+        {
+            Eigen::VectorXd wtilde_j = transformed_weights.row(j).head(numComponents - 1);
+            Eigen::VectorXd mtilde_j = mtildes.row(node2comp[j]).head(numComponents - 1);
+            Vn += (wtilde_i - mtilde_i) * (wtilde_j - mtilde_j) * F_m_rhoG(i, j);
+        }
     }
     Sigma = inv_wishart_rng(nu_n, Vn, rng);
     _computeInvSigmaH();
@@ -370,7 +392,64 @@ void SpatialMixtureSampler::_computeInvSigmaH() {
     #pragma omp parallel for
     for(int h=0; h < sigma_star_h.size(); ++h){
         double aux = pippo[h].dot(utils::removeRow(Sigma, h).col(h));
-        sigma_star_h[h] = Sigma(h, h) - aux;
+        sigma_star_h[h] = (Sigma(h, h) - aux) / (rho * W_init.row(h).sum() + (1 - rho)); 
+    }
+}
+
+void sample_mtilde() 
+{
+    int num_connected = std::max_element(node2comp) + 1;
+
+    // TODO forse qui c'è un quadrato
+    Eigen::MatrixXd prec_prior = Eigen::MatrixXd::Identity(
+        numComponents - 1, numComponents - 1).array() * (1.0 / mtilde_sigma);
+
+    Eigen::MatrixXd F_min_rhoG = F - rho * W_init;
+
+    for (int k=1; k < num_connected; k++) {
+        int data_for_comp = std::count_if(
+            node2comp.begin(), node2comp.end(), 
+            [&k](const int j) {return j == k;});
+    
+        std::vector<Eigen::VectorXd> currdata_;
+        currdata_.reserve(data_for_comp);
+        Eigen::MatrixXd curr_f_min_rhoG(data_for_comp, data_for_comp);
+        std::vector<int> data_in_comp;
+        for (int i=0; i < numGroups; i++) {
+            if (node2comp[i] == k) {
+                currdata_.push_back(
+                    transformed_weights.row(i).head(numComponents - 1)).t();
+                data_in_comp.push_back(i);
+            }
+        }
+
+        #pragma omp parallel for collapse(2)
+        for (int l=0; l < data_in_comp.size(); l++) {
+            for (int m = 0; m < data_in_comp.size(); m++) {
+                curr_f_min_rhoG(l, m) = F_min_rhoG(
+                    data_in_comp[l], data_in_comp[m]);
+            }
+        }
+
+        Eigen::VectorXd currdata(currdata_.size() * (numComponents - 1));
+        for (int i = 0; i < currdata_.size(); i++)
+            currdata.segment(i * (numComponents - 1), (numComponents - 1)) = \
+                currdata_[i];
+
+        Eigen::MatrixXd I_star = kroneckerProduct(
+            Eigen::VectorXd::Ones(currdata_.size()),
+            Eigen::MatrixXd::Identity((numComponents - 1), (numComponents - 1)));
+
+        
+        Eigen::MatrixXd prec_post = I_star.transpose() * prec * I_star + prec_prior;
+        Eigen::MatrixXd m_post = prec_post.ldlt().solve(
+            I_star.transpose() * kroneckerProduct(curr_f_min_rhoG, SigmaInv) *
+            currdata);
+
+        Eigen::VectorXd sampled = stan::math::multi_normal_prec_rng(
+            m_post, prec_post, rng);
+
+        mtildes.row(k).head(numComponents - 1) = sampled;
     }
 }
 

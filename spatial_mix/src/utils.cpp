@@ -180,4 +180,36 @@ Eigen::MatrixXd removeRowColumn(Eigen::MatrixXd matrix, unsigned int toRemove)
     return matrix;
 }
 
+std::vector<int> findConnectedComponents(const Eigen::MatrixXd& adjacency)
+{
+    std::vector<bool> visited(adjacency.rows(), false);
+    std::vector<int> out(adjacency.rows());
+    int curr_comp = 0;
+    int curr_node = 0;
+    while (std::find(visited.begin(), visited.end(), false) != visited.end()) {
+        _dephtFirstSearch(adjacency, curr_node, &visited, &out, curr_comp);
+        curr_comp += 1;
+        auto it = std::find(visited.begin(), visited.end(), false);
+        if (it == visited.end())
+            break;
+        else
+            curr_node = std::distance(visited.begin(), it);
+    }
+    return out;
+}
+
+void _dephtFirstSearch(const Eigen::MatrixXd &adjacency, int curr_node,
+                       std::vector<bool> *visited,
+                       std::vector<int> *node2comp,
+                       int curr_comp)
+{
+    visited->at(curr_node) = true;
+    node2comp->at(curr_node) = curr_comp;
+    for (int k = 0; k < adjacency.cols(); k++)
+    {
+        if ((adjacency(curr_node, k) > 0) && !(visited->at(k)))
+            _dephtFirstSearch(adjacency, k, visited, node2comp, curr_comp);
+    }
+    return;
+}
 }

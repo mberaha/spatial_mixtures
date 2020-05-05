@@ -34,6 +34,13 @@ Eigen::MatrixXd removeColumn(Eigen::MatrixXd matrix, unsigned int colToRemove);
 
 Eigen::MatrixXd removeRowColumn(Eigen::MatrixXd matrix, unsigned int toRemove);
 
+std::vector<int> findConnectedComponents(const Eigen::MatrixXd& adjacency);
+
+void _dephtFirstSearch(const Eigen::MatrixXd &adjacency, int curr_node,
+                       std::vector<bool> *visited, 
+                       std::vector<int> *node2comp,
+                       int curr_comp);
+
 } // namespace utils
 
 #endif // SRC_UTILS_HPP
