@@ -404,7 +404,7 @@ void SpatialMixtureSampler::_computeInvSigmaH() {
     for(int h=0; h < numComponents - 1; ++h){
         double aux = pippo[h].dot(utils::removeRow(Sigma, h).col(h));
         for (int i=0; i < numGroups; i++) {
-            sigma_star_h(i, h) = (Sigma(h, h) - aux) / (W_init.row(i).sum() * rho + (1 - rho));
+            sigma_star_h(i, h) = (Sigma(h, h) - aux) / F(i, i);
         }
     }
 }
