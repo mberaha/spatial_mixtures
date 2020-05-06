@@ -38,6 +38,7 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd transformed_weights;
      std::vector<std::vector<int>> cluster_allocs;
      Eigen::MatrixXd mtildes;
+     int num_connected_comps;
 
      // MCAR
      double rho;
@@ -74,7 +75,7 @@ class SpatialMixtureSampler {
      int iter = 0;
 
      std::vector<Eigen::VectorXd> pippo;
-     std::vector<double> sigma_star_h;
+     Eigen::MatrixXd sigma_star_h;
      // HyperParams for NormalGamma
      double priorMean, priorA, priorB, priorLambda;
 

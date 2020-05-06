@@ -9,7 +9,7 @@ PYTHON3 := /usr/bin/python3.8
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
-	-O3 \
+	-g \
 	-MMD \
 	-I$(STAN_ROOT_DIR) \
 	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
@@ -21,7 +21,7 @@ CFLAGS = \
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -O3 -D_REENTRANT
+LDFLAGS = -g -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)

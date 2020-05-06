@@ -15,10 +15,14 @@ SpatialMixtureSampler::SpatialMixtureSampler(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
 
     node2comp = utils::findConnectedComponents(W_init);
+    std::cout << "node2comp: ";
+    for (const auto l: node2comp)
+        std::cout << l << ", ";
+    std::cout << std::endl;
 
-    // last component is not used!
-    mtildes = Eigen::MatrixXd::Zero(
-        std::max_element(node2comp) + 1, numComponents);
+    auto it = std::max_element(node2comp.begin(), node2comp.end());
+    num_connected_comps = *it + 1;
+    std::cout << "num_connected_comps: " << num_connected_comps << std::endl;
 }
 
 
@@ -80,9 +84,10 @@ void SpatialMixtureSampler::init() {
     nu = params.sigma_params().nu();
     if (params.sigma_params().identity())
         V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
-    else
-        throw std::logic_error("Case not implemented yet");
-
+    else {
+        V0 = Eigen::MatrixXd::Identity(numComponents - 1, numComponents - 1);
+        std::cout << "Case not implemented yet, settig V0 to identity" << std::endl;;
+    }
     alpha = params.rho_params().a();
     beta = params.rho_params().b();
 
@@ -130,11 +135,15 @@ void SpatialMixtureSampler::init() {
         F(i, i) = rho * W_init.row(i).sum() + (1 - rho);
     }
 
-    std::cout << "W \n" << W << std::endl;
+    // last component is not used!
+    mtildes = Eigen::MatrixXd::Zero(num_connected_comps, numComponents);
+    std::cout << "mtildes \n"
+              << mtildes << std::endl;
 
+    std::cout << "W \n" << W << std::endl;
     // compute inverses of sigma(-h,h))
     pippo.resize(numComponents - 1);
-    sigma_star_h.resize(numComponents - 1);
+    sigma_star_h = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
 
     _computeInvSigmaH();
     std::cout << "init done" << std::endl;
@@ -149,7 +158,8 @@ void SpatialMixtureSampler::sample()  {
     sampleAllocations();
     sampleWeights();
     sampleSigma();
-    sampleRho();
+    // sampleRho();
+    sample_mtilde();
 }
 
 
@@ -228,10 +238,10 @@ void SpatialMixtureSampler::sampleWeights() {
                 utils::removeElem(wtilde , h) -
                 utils::removeElem(mu_i, h));
 
-            double sigma_hat_ih = 1.0 / (1.0 / sigma_star_h[h] + omega_ih);
+            double sigma_hat_ih = 1.0 / (1.0 / sigma_star_h(i, h) + omega_ih);
             int N_ih = cluster_sizes[h];
             double mu_hat_ih = (
-                mu_star_ih / sigma_star_h[h] + N_ih -
+                mu_star_ih / sigma_star_h(i, h) + N_ih -
                 0.5 * samplesPerGroup[i] + omega_ih*C_ih) * (sigma_hat_ih);
 
             transformed_weights(i, h) = normal_rng(
@@ -275,7 +285,7 @@ void SpatialMixtureSampler::sampleRho() {
     Eigen::VectorXd meanVec(numGroups * (numComponents - 1));
     for (int i=0; i < numGroups; i++)
         meanVec.segment(i * (numComponents - 1), (numComponents - 1)) = \
-            mtildes.row(node2comp[i]).head(numComponents - 1).t();
+            mtildes.row(node2comp[i]).head(numComponents - 1).transpose();
 
     // compute acceptance ratio
     Eigen::MatrixXd rowVar = F - proposed * W_init;
@@ -320,7 +330,7 @@ void SpatialMixtureSampler::sampleRho() {
 void SpatialMixtureSampler::sampleSigma() {
     Eigen::MatrixXd Vn = V0;
     double nu_n = nu + numGroups;
-    Eigen::MatrixXd F_m_rhoG = F - W_init.array() * rho;
+    Eigen::MatrixXd F_m_rhoG = F - W_init * rho;
 
     #pragma omp parallel for collapse(2)
     for (int i=0; i < numGroups; i++) {
@@ -330,7 +340,8 @@ void SpatialMixtureSampler::sampleSigma() {
         {
             Eigen::VectorXd wtilde_j = transformed_weights.row(j).head(numComponents - 1);
             Eigen::VectorXd mtilde_j = mtildes.row(node2comp[j]).head(numComponents - 1);
-            Vn += (wtilde_i - mtilde_i) * (wtilde_j - mtilde_j) * F_m_rhoG(i, j);
+            Vn += ((wtilde_i - mtilde_i) * (wtilde_j - mtilde_j).transpose()
+                   ) * F_m_rhoG(i, j);
         }
     }
     Sigma = inv_wishart_rng(nu_n, Vn, rng);
@@ -383,30 +394,30 @@ void SpatialMixtureSampler::_computeInvSigmaH() {
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(
         numComponents - 2, numComponents - 2);
 
-    #pragma omp parallel for
+    // #pragma omp parallel for
     for(int h=0; h < numComponents - 1; ++h){
         pippo[h] = utils::removeColumn(Sigma, h).row(h) *
                    utils::removeRowColumn(Sigma, h).llt().solve(I);
     }
 
-    #pragma omp parallel for
-    for(int h=0; h < sigma_star_h.size(); ++h){
+    // #pragma omp parallel for
+    for(int h=0; h < numComponents - 1; ++h){
         double aux = pippo[h].dot(utils::removeRow(Sigma, h).col(h));
-        sigma_star_h[h] = (Sigma(h, h) - aux) / (rho * W_init.row(h).sum() + (1 - rho)); 
+        for (int i=0; i < numGroups; i++) {
+            sigma_star_h(i, h) = (Sigma(h, h) - aux) / (W_init.row(i).sum() * rho + (1 - rho));
+        }
     }
 }
 
-void sample_mtilde() 
+void SpatialMixtureSampler::sample_mtilde() 
 {
-    int num_connected = std::max_element(node2comp) + 1;
-
     // TODO forse qui c'è un quadrato
     Eigen::MatrixXd prec_prior = Eigen::MatrixXd::Identity(
         numComponents - 1, numComponents - 1).array() * (1.0 / mtilde_sigma);
 
     Eigen::MatrixXd F_min_rhoG = F - rho * W_init;
 
-    for (int k=1; k < num_connected; k++) {
+    for (int k=1; k < num_connected_comps; k++) {
         int data_for_comp = std::count_if(
             node2comp.begin(), node2comp.end(), 
             [&k](const int j) {return j == k;});
@@ -418,7 +429,7 @@ void sample_mtilde()
         for (int i=0; i < numGroups; i++) {
             if (node2comp[i] == k) {
                 currdata_.push_back(
-                    transformed_weights.row(i).head(numComponents - 1)).t();
+                    transformed_weights.row(i).head(numComponents - 1).transpose());
                 data_in_comp.push_back(i);
             }
         }
@@ -436,14 +447,16 @@ void sample_mtilde()
             currdata.segment(i * (numComponents - 1), (numComponents - 1)) = \
                 currdata_[i];
 
+        Eigen::MatrixXd curr_prec = kroneckerProduct(curr_f_min_rhoG, SigmaInv);
+
         Eigen::MatrixXd I_star = kroneckerProduct(
             Eigen::VectorXd::Ones(currdata_.size()),
             Eigen::MatrixXd::Identity((numComponents - 1), (numComponents - 1)));
-
         
-        Eigen::MatrixXd prec_post = I_star.transpose() * prec * I_star + prec_prior;
-        Eigen::MatrixXd m_post = prec_post.ldlt().solve(
-            I_star.transpose() * kroneckerProduct(curr_f_min_rhoG, SigmaInv) *
+        Eigen::MatrixXd prec_post = \
+            I_star.transpose() * curr_prec * I_star + prec_prior;
+        Eigen::VectorXd m_post = prec_post.ldlt().solve(
+            I_star.transpose() * curr_prec *
             currdata);
 
         Eigen::VectorXd sampled = stan::math::multi_normal_prec_rng(
