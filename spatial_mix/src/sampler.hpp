@@ -47,8 +47,11 @@ class SpatialMixtureSampler {
      Eigen::MatrixXd SigmaInv;
      Eigen::MatrixXd F;
      std::vector<int> node2comp;
-     double mtilde_sigma = 1.0;
- 
+     double mtilde_sigmasq = 1.0;
+     std::vector<std::vector<int>> comp2node;
+     std::vector<Eigen::MatrixXd> F_by_comp;
+     std::vector<Eigen::MatrixXd> G_by_comp;
+
      // Regression
      bool regression = false;
      int p_size;

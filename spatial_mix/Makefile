@@ -4,12 +4,12 @@ PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
 STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
-PYTHON3 := /usr/bin/python3.8
+PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
 
 CXX = g++
 CFLAGS = \
 	-std=c++1y \
-	-g \
+	-O3 \
 	-MMD \
 	-I$(STAN_ROOT_DIR) \
 	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
@@ -21,7 +21,7 @@ CFLAGS = \
 LDLIBS = \
  	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
 	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -g -D_REENTRANT
+LDFLAGS = -O3 -D_REENTRANT
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)

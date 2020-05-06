@@ -26,4 +26,5 @@ message SamplerParams {
   BetaParams rho_params = 3;
   InverseWishartParams sigma_params = 4;
 
+  double mtilde_sigmasq = 5;
 }
