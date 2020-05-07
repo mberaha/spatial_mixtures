@@ -52,8 +52,6 @@ if __name__ == "__main__":
     outdir = os.path.join(args.output_path, "jo")
     os.makedirs(outdir, exist_ok=True)
 
-    chaindir = os.path.join(outdir, "chains")
-    densdir = os.path.join(outdir, "dens")
     
     ngroups = 6
     W = np.zeros((ngroups, ngroups))
@@ -70,10 +68,14 @@ if __name__ == "__main__":
     for j in range(3):
         filenames = glob.glob(os.path.join(
             args.data_path, "scenario{0}/*".format(j)))
+
+        chaindir = os.path.join(outdir, "chains/scenario{0}".format(j))
+        densdir = os.path.join(outdir, "dens/scenario{0}".format(j))
+
         for filename in filenames:
             rep = filename.split(".")[0]
-            chainfile = os.path.join(chaindir, rep)
-            densfile = os.path.join(densdir, rep)
+            chainfile = os.path.join(chaindir, "{0}.pickle".format(rep))
+            densfile = os.path.join(chaindir, "{0}.pickle".format(rep))
 
             df = pd.read_csv(filename)
 

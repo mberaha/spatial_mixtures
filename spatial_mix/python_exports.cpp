@@ -10,6 +10,7 @@
 
 #include "src/sampler.hpp"
 #include "src/utils.hpp"
+#include "src/hdp.hpp"
 
 #include "univariate_mixture_state.pb.h"
 

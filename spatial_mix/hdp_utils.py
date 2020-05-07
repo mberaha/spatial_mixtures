@@ -1,8 +1,13 @@
+import os
+import sys
 import numpy as np
 import multiprocessing
 
 from scipy.stats import gamma, norm
 from spatial_mix.protos.py.univariate_mixture_state_pb2 import HdpState
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import spmixtures #noqa
 
 
 def estimateDensity(cluster_sizes, betas, atoms, params, xgrid):
