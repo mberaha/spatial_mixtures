@@ -76,6 +76,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str)
     parser.add_argument("--output_path", type=str)
+    parser.add_argument("--njobs", type=int, default=6)
+
     args = parser.parse_args()
 
     outdir = os.path.join(args.output_path, "jo")
@@ -93,7 +95,7 @@ if __name__ == "__main__":
 
     q = multiprocessing.Queue()
     jobs = []
-
+    curr_jobs = 0
     for j in list(range(3)):
         filenames = glob.glob(os.path.join(
             args.data_path, "scenario{0}/*".format(j)))
@@ -120,3 +122,14 @@ if __name__ == "__main__":
                     deepcopy(stan_model), currdata, chainfile, densfile))
             job.start()
             jobs.append(job)
+            curr_jobs += 1
+
+            if curr_jobs == args.njobs:
+                for j in jobs:
+                    j.join()
+
+                jobs = []
+                curr_jobs = 0
+
+        for j in jobs:
+            j.join()

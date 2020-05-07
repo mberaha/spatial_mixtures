@@ -49,11 +49,13 @@ if __name__ == "__main__":
     parser.add_argument("--hdp", type=str, default="")
     parser.add_argument("--output_path", type=str, default="data/simulation1/")
     parser.add_argument("--num_rep", type=int, default=100)
+    parser.add_argument("--njobs", type=int, default=6)
+
     args = parser.parse_args()
 
      # run models
-    burnin = 10000
-    niter = 10000
+    burnin = 100
+    niter = 100
     thin = 5
     ngroups = 6
     W = np.zeros((ngroups, ngroups))
@@ -73,6 +75,9 @@ if __name__ == "__main__":
 
     q = multiprocessing.Queue()
     jobs = []
+
+    curr_jobs = 0
+
     for j in range(3):
         filenames = glob.glob(os.path.join(
             args.data_path, "scenario{0}/*".format(j)))
@@ -103,6 +108,8 @@ if __name__ == "__main__":
                     target=run_spmix, args=(currdata, chainfile, densfile))
                 job1.start()
                 jobs.append(job1)
+                curr_jobs += 1
+                
 
             if args.hdp:
                 chainfile = os.path.join(
@@ -113,6 +120,13 @@ if __name__ == "__main__":
                     target=run_hdp, args=(currdata, chainfile, densfile))
                 job2.start()
                 jobs.append(job2)
+                curr_jobs += 1
+            if curr_jobs == args.njobs:
+                for j in jobs:
+                    j.join()
+                
+                jobs = []
+                curr_jobs = 0
 
-    for j in jobs:
-        j.join()
+        for j in jobs:
+            j.join()
