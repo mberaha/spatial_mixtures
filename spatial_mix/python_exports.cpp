@@ -89,7 +89,7 @@ std::deque<py::bytes> runHdpPythonFromData(
     }
 
     for (int i=0; i < niter; i++) {
-        spSampler.sample();
+        sampler.sample();
         if ((i +1) % thin == 0) {
             std::string s;
             sampler.getStateAsProto().SerializeToString(&s);

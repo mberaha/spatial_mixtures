@@ -118,6 +118,10 @@ def run_jo(model, datas, chain_file, dens_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--load_data", type=str, default="")
+    parser.add_argument("--spmix", type=str, default="")
+    parser.add_argument("--hdp", type=str, default="")
+    parser.add_argument("--jo", type=str, default="")
     parser.add_argument("--output_path", type=str, default="data/simulation1/")
     parser.add_argument("--num_rep", type=int, default=100)
     args = parser.parse_args()
@@ -143,14 +147,20 @@ if __name__ == "__main__":
     for i in range(args.num_rep):
         outdir = os.path.join("rep".format(i))
         os.makedirs(outdir, exist_ok=True)
-        datas = [
-            simulate_data_scenario12(1000, 1000),
-            simulate_data_scenario12(1000, 10),
-            simulate_data_scenario3(100, 100)
-        ]
+        if args.load_data:
+            datas = []
+            for j in range(3):
+                datas.append(pd.read_csv(
+                    os.path.join(outdir, "data{0}.csv".format(j))))
+        else:
+            datas = [
+                simulate_data_scenario12(1000, 1000),
+                simulate_data_scenario12(1000, 10),
+                simulate_data_scenario3(100, 100)
+            ]
 
-        for j in range(3):
-            datas[j].to_csv(os.path.join(outdir, "data{0}.csv".format(j)))
+            for j in range(3):
+                datas[j].to_csv(os.path.join(outdir, "data{0}.csv".format(j)))
 
         for j in range(3):
             currdata = []
@@ -158,36 +168,39 @@ if __name__ == "__main__":
             for g in range(ngroups):
                 currdata.append(df[df['group'] == g]['datum'].values)
 
-            chainfile = os.path.join(
-                outdir, "spmix_chains_scenario{0}.recordio".format(j))
-            densfile = os.path.join(
-                outdir, "spmix_dens_scenario{0}.pickle".format(j))
+            if args.spmix:
+                chainfile = os.path.join(
+                    outdir, "spmix_chains_scenario{0}.recordio".format(j))
+                densfile = os.path.join(
+                    outdir, "spmix_dens_scenario{0}.pickle".format(j))
 
-            job1 = multiprocessing.Process(
-                target=run_spmix, args=(currdata, chainfile, densfile))
-            job1.start()
-            jobs.append(job1)
+                job1 = multiprocessing.Process(
+                    target=run_spmix, args=(currdata, chainfile, densfile))
+                job1.start()
+                jobs.append(job1)
 
-            chainfile = os.path.join(
-                outdir, "hdp_chains_scenario{0}.recordio".format(j))
-            densfile = os.path.join(
-                outdir, "hdp_dens_scenario{0}.pickle".format(j))
+            if args.hdp:
+                chainfile = os.path.join(
+                    outdir, "hdp_chains_scenario{0}.recordio".format(j))
+                densfile = os.path.join(
+                    outdir, "hdp_dens_scenario{0}.pickle".format(j))
 
-            job2 = multiprocessing.Process(
-                target=run_hdp, args=(currdata, chainfile, densfile))
-            job2.start()
-            jobs.append(job2)
+                job2 = multiprocessing.Process(
+                    target=run_hdp, args=(currdata, chainfile, densfile))
+                job2.start()
+                jobs.append(job2)
 
-            chainfile = os.path.join(
-                outdir, "jo_chains_scenario{0}.recordio".format(j))
-            densfile = os.path.join(
-                outdir, "jo_dens_scenario{0}.pickle".format(j))
+            if args.jo:
+                chainfile = os.path.join(
+                    outdir, "jo_chains_scenario{0}.recordio".format(j))
+                densfile = os.path.join(
+                    outdir, "jo_dens_scenario{0}.pickle".format(j))
 
-            job3 = multiprocessing.Process(
-                target=run_jo, args=(
-                    deepcopy(stan_model), currdata, chainfile, densfile))
-            job3.start()
-            jobs.append(job3)
+                job3 = multiprocessing.Process(
+                    target=run_jo, args=(
+                        deepcopy(stan_model), currdata, chainfile, densfile))
+                job3.start()
+                jobs.append(job3)
 
     for j in jobs:
         j.join()
