@@ -15,6 +15,8 @@ xgrid = np.linspace(-10, 10, 1000)
 
 
 def run_jo(model, datas, chain_file, dens_file):
+    print("************** STARTING {0} ***************".format(chain_file))
+
     data_by_group_stan = []
     max_num_data = np.max([len(x) for x in datas])
     for i in range(6):
@@ -34,13 +36,15 @@ def run_jo(model, datas, chain_file, dens_file):
         "points_in_grid": len(xgrid),
         "xgrid": xgrid}
 
-    fit = model.sampling(data=stan_data, iter=1000, n_jobs=1)
+    fit = model.sampling(data=stan_data, iter=8000, n_jobs=1)
     with open(chain_file, 'wb') as fp:
         pickle.dump({"model": model, "fit": fit}, fp)
 
     stan_dens = spmix_utils.eval_stan_density(fit, xgrid)
     with open(dens_file, "wb") as fp:
         pickle.dump({"xgrid": xgrid, "dens": stan_dens}, fp)
+
+    print("************** FINISHED {0} ***************".format(chain_file))
 
 
 if __name__ == "__main__":
@@ -65,14 +69,14 @@ if __name__ == "__main__":
     q = multiprocessing.Queue()
     jobs = []
 
-    for j in list(range(3))[:1]:
+    for j in range(3):
         filenames = glob.glob(os.path.join(
             args.data_path, "scenario{0}/*".format(j)))
 
         chaindir = os.path.join(outdir, "chains/scenario{0}".format(j))
         densdir = os.path.join(outdir, "dens/scenario{0}".format(j))
 
-        for filename in filenames[:1]:
+        for filename in filenames:
             rep = filename.split("/")[-1].split(".")[0]
             chainfile = os.path.join(chaindir, "{0}.pickle".format(rep))
             densfile = os.path.join(chaindir, "{0}.pickle".format(rep))
