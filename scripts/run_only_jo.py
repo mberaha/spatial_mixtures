@@ -9,9 +9,34 @@ import pandas as pd
 import pystan
 
 from copy import deepcopy
+from scipy.stats import norm
+
 
 xgrid = np.linspace(-10, 10, 1000)
 
+
+def eval_stan_density(stanfit, xgrid):
+    means = stanfit.extract("means")["means"]
+    variances = stanfit.extract("vars")["vars"]
+    weights = stanfit.extract("weights")["weights"]
+    out = []
+    num_iters = means.shape[0]
+    num_components = means.shape[1]
+
+    means = means.reshape(-1)
+    stddevs = np.sqrt(variances.reshape(-1))
+    allgrid = np.hstack([xgrid.reshape(-1, 1)] * means.shape[0])
+
+    eval_normals = norm.pdf(
+        allgrid, means, stddevs
+    ).reshape(len(xgrid), num_iters, num_components)
+
+    numGroups = weights.shape[1]
+    for g in range(numGroups):
+        weights_chain = weights[:, g, :]
+        out.append(np.sum(eval_normals*weights_chain, axis=-1).T)
+
+    return out
 
 
 def run_jo(model, datas, chain_file, dens_file):
@@ -36,11 +61,11 @@ def run_jo(model, datas, chain_file, dens_file):
         "points_in_grid": len(xgrid),
         "xgrid": xgrid}
 
-    fit = model.sampling(data=stan_data, iter=8000, n_jobs=1)
+    fit = model.sampling(data=stan_data, iter=8000, n_jobs=1, chains=1)
     with open(chain_file, 'wb') as fp:
         pickle.dump({"model": model, "fit": fit}, fp)
 
-    stan_dens = spmix_utils.eval_stan_density(fit, xgrid)
+    stan_dens = eval_stan_density(fit, xgrid)
     with open(dens_file, "wb") as fp:
         pickle.dump({"xgrid": xgrid, "dens": stan_dens}, fp)
 
@@ -69,12 +94,14 @@ if __name__ == "__main__":
     q = multiprocessing.Queue()
     jobs = []
 
-    for j in range(3):
+    for j in list(range(3)):
         filenames = glob.glob(os.path.join(
             args.data_path, "scenario{0}/*".format(j)))
 
         chaindir = os.path.join(outdir, "chains/scenario{0}".format(j))
         densdir = os.path.join(outdir, "dens/scenario{0}".format(j))
+        os.makedirs(chaindir, exist_ok=True)
+        os.makedirs(chaindir, exist_ok=True)
 
         for filename in filenames:
             rep = filename.split("/")[-1].split(".")[0]
