@@ -74,16 +74,6 @@ void HdpSampler::sampleAtoms() {
         double mu = stan::math::normal_rng(params[0], sigmaNorm, rng);
         means[h] = mu;
         stddevs[h] = 1.0 / std::sqrt(tau);
-        if (abs(mu) > 10 || stddevs[h] > 20) {
-          std::cout << "mu: " << mu << ", sd: " << stddevs[h] << ", postMean: " << params[0] <<
-                        ", postA: " << params[1] << ", postB: " << params[2] <<
-                        ", postLambda: " << params[3] << std::endl;
-          std::cout << "data:" << std::endl;
-          for (auto d: datavec[h])
-            std::cout << d << ", ";
-
-          std::cout << std::endl;
-        }
     }
 }
 

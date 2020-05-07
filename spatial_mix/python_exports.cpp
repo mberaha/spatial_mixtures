@@ -48,7 +48,6 @@ std::deque<py::bytes> _runSpatialSampler(
     return out;
 }
 
-
 std::deque<py::bytes> runSpatialSamplerPythonFromFiles(
         int burnin, int niter, int thin,
         std::string infile, std::string w_file, std::string params_file,
