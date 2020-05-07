@@ -77,4 +77,4 @@ def runHdpSampler(burnin, niter, thin, data):
             burnin, niter, thin, data)
 
     return list(map(
-        lambda x: getDeserialized(x, UnivariateState), serializedChains))
+        lambda x: getDeserialized(x, HdpState), serializedChains))
