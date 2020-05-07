@@ -88,7 +88,7 @@ if __name__ == "__main__":
         os.makedirs(densdir_hdp, exist_ok=True)
 
         for filename in filenames:
-            rep = filename.split(".")[0]
+            rep = filename.split("/")[-1].split(".")[0]
             df = pd.read_csv(filename)
 
             currdata = []
