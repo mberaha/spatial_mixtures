@@ -72,6 +72,36 @@ std::deque<py::bytes> runSpatialSamplerPythonFromData(
     return _runSpatialSampler(burnin, niter, thin, data, W, params, covariates);
 }
 
+std::deque<py::bytes> runHdpPythonFromData(
+        int burnin, int niter, int thin,
+        const std::vector<std::vector<double>> &data) {
+
+    HdpSampler sampler(data);
+    sampler.init();
+
+    std::deque<py::bytes> out;
+    int log_every = 200;
+
+    for (int i=0; i < burnin; i++) {
+        sampler.sample();
+        if ((i + 1) % log_every == 0)
+            py::print("Burn-in, iter #", i+1, " / ", burnin);
+    }
+
+    for (int i=0; i < niter; i++) {
+        spSampler.sample();
+        if ((i +1) % thin == 0) {
+            std::string s;
+            sampler.getStateAsProto().SerializeToString(&s);
+            out.push_back((py::bytes) s);
+        }
+        if ((i + 1) % log_every == 0)
+            py::print("Running, iter #", i+1, " / ", niter);
+    }
+    return out;
+}
+
+
 
 PYBIND11_MODULE(spmixtures, m) {
     m.doc() = "aaa"; // optional module docstring
@@ -81,5 +111,10 @@ PYBIND11_MODULE(spmixtures, m) {
 
     m.def("runSpatialSamplerFromData", &runSpatialSamplerPythonFromData,
         "runs the spatial sampler, returns a list (deque) of serialized protos");
+
+
+    m.def("runHdpPythonFromData", &runHdpPythonFromData,
+        "runs the HDP sampler, returns a list (deque) of serialized protos");
+
 
 }
