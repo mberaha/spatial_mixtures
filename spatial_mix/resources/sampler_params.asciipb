@@ -16,3 +16,5 @@ sigma_params {
   nu: 100
   identity: True
 }
+
+mtilde_sigmasq: 5

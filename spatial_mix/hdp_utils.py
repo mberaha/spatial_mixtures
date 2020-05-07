@@ -2,6 +2,7 @@ import numpy as np
 import multiprocessing
 
 from scipy.stats import gamma, norm
+from spatial_mix.protos.py.univariate_mixture_state_pb2 import HdpState
 
 
 def estimateDensity(cluster_sizes, betas, atoms, params, xgrid):
@@ -59,3 +60,16 @@ def estimateDensities(chains, xgrids, nproc=-1):
 
         out.append(curr)
     return out
+
+
+def getDeserialized(serialized, objType):
+    out = objType()
+    out.ParseFromString(serialized)
+    return out
+
+def runHdpSampler(burnin, niter, thin, data):
+    serializedChains = spmixtures.runHdpPythonFromData(
+            burnin, niter, thin, data)
+
+    return list(map(
+        lambda x: getDeserialized(x, UnivariateState), serializedChains))

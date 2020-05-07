@@ -87,6 +87,30 @@ def estimateDensities(chains, xgrids, nproc=-1):
     return out
 
 
+def eval_stan_density(stanfit, xgrid):
+    means = stanfit.extract("means")["means"]
+    variances = stanfit.extract("vars")["vars"]
+    weights = stanfit.extract("weights")["weights"]
+    out = []
+    num_iters = means.shape[0]
+    num_components = means.shape[1]
+
+    means = means.reshape(-1)
+    stddevs = np.sqrt(variances.reshape(-1))
+    allgrid = np.hstack([xgrid.reshape(-1, 1)] * means.shape[0])
+
+    eval_normals = norm.pdf(
+        allgrid, means, stddevs
+    ).reshape(len(xgrid), num_iters, num_components)
+
+    numGroups = weights.shape[1]
+    for g in range(numGroups):
+        weights_chain = weights[:, g, :]
+        out.append(np.sum(eval_normals*weights_chain, axis=-1).T)
+
+    return out
+
+
 def lpml(densities):
     if isinstance(densities, list):
         densities = np.hstack(densities)

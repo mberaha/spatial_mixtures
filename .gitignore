@@ -1,3 +1,5 @@
+data/*
+
 # protos
 *_pb2.py
 *.pb.h
