@@ -86,8 +86,7 @@ if __name__ == "__main__":
     
     ngroups = 6
     W = np.zeros((ngroups, ngroups))
-    W[0, 1] = W[1, 0] = 1
-    W[2, 3] = W[3, 2] = 1
+    W[0, 1] = W[1, 0] = 1chaindir
     W[4, 5] = W[5, 4] = 1
 
     stan_model = pystan.StanModel(
@@ -108,7 +107,7 @@ if __name__ == "__main__":
         for filename in filenames:
             rep = filename.split("/")[-1].split(".")[0]
             chainfile = os.path.join(chaindir, "{0}.pickle".format(rep))
-            densfile = os.path.join(chaindir, "{0}.pickle".format(rep))
+            densfile = os.path.join(densdir, "{0}.pickle".format(rep))
             print(chainfile)
 
             df = pd.read_csv(filename)
@@ -131,5 +130,5 @@ if __name__ == "__main__":
                 jobs = []
                 curr_jobs = 0
 
-        for j in jobs:
-            j.join()
+    for j in jobs:
+        j.join()
