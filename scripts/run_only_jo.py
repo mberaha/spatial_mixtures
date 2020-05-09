@@ -86,7 +86,8 @@ if __name__ == "__main__":
     
     ngroups = 6
     W = np.zeros((ngroups, ngroups))
-    W[0, 1] = W[1, 0] = 1chaindir
+    W[0, 1] = W[1, 0] = 1
+    W[2, 3] = W[3, 2] = 1
     W[4, 5] = W[5, 4] = 1
 
     stan_model = pystan.StanModel(
