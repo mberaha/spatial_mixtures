@@ -54,8 +54,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
      # run models
-    burnin = 100
-    niter = 100
+    burnin = 10000
+    niter = 10000
     thin = 5
     ngroups = 6
     W = np.zeros((ngroups, ngroups))
