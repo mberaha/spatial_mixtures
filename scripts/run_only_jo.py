@@ -9,10 +9,41 @@ import pandas as pd
 import pystan
 
 from copy import deepcopy
-from scipy.stats import norm
+from scipy.stats import t, norm, skewnorm, cauchy, chi2
+from scipy.integrate import simps, trapz
 
 
 xgrid = np.linspace(-10, 10, 1000)
+
+true_dens_scenario12 = [
+    t.pdf(xgrid, 6, -4, 1), t.pdf(xgrid, 6, -4, 1),
+    skewnorm.pdf(xgrid, 4, 4, 1), skewnorm.pdf(xgrid, 4, 4, 1),
+    chi2.pdf(xgrid, 3, 0, 1), chi2.pdf(xgrid, 3, 0, 1)
+]
+
+true_dens_scenario3 = [
+    t.pdf(xgrid, 6, -4, 1), t.pdf(xgrid, 6, -4, 1),
+    skewnorm.pdf(xgrid, 4, 4, 1), skewnorm.pdf(xgrid, 4, 4, 1),
+    cauchy.pdf(xgrid, 0, 1), cauchy.pdf(xgrid, 0, 1)
+]
+
+
+def hellinger_dist(p, q, xgrid):
+    return np.sqrt(0.5 * simps((np.sqrt(p) - np.sqrt(q)) ** 2, xgrid))
+
+
+def post_hellinger_dist(estimatedDens, true, xgrid):
+    return np.apply_along_axis(
+        lambda x: hellinger_dist(x, true, xgrid), 1, estimatedDens)
+
+
+def kl_div(p, q, xgrid):
+    return simps(p * (np.log(p + 1e-5) - np.log(q + 1e-5)), xgrid)
+
+
+def post_kl_div(estimatedDens, true, xgrid):
+    return np.apply_along_axis(
+        lambda x: kl_div(true, x, xgrid), 1, estimatedDens)
 
 
 def eval_stan_density(stanfit, xgrid):
@@ -39,7 +70,9 @@ def eval_stan_density(stanfit, xgrid):
     return out
 
 
-def run_jo(model, datas, chain_file, dens_file):
+def run_jo(
+        model, datas, chain_file, dens_file,
+        scen, save_chain, save_dens):
     print("************** STARTING {0} ***************".format(chain_file))
 
     data_by_group_stan = []
@@ -62,12 +95,27 @@ def run_jo(model, datas, chain_file, dens_file):
         "xgrid": xgrid}
 
     fit = model.sampling(data=stan_data, iter=8000, n_jobs=1, chains=1)
-    with open(chain_file, 'wb') as fp:
-        pickle.dump({"model": model, "fit": fit}, fp)
+    if save_chain:
+        with open(chain_file, 'wb') as fp:
+            pickle.dump({"model": model, "fit": fit}, fp)
 
     stan_dens = eval_stan_density(fit, xgrid)
+    kl_divs = []
+    hell_dists = []
+    for loc in range(6):
+        true_d = true_dens_scenario12[loc] if scen < 2 else true_dens_scenario3[loc]
+        hell_dists.append((scen, rep, loc, np.mean(post_hellinger_dist(
+            stan_dens[loc], true_d, xgrid))))
+
+        kl_divs.append((scen, rep, loc, np.mean(post_kl_div(
+            stan_dens[loc], true_d, xgrid))))
+
+    out = {'xgrid': xgrid, 'hell_dits': hell_dists, 'kl_divs': kl_divs}
+    if save_dens:
+        out["dens"] = stan_dens
+
     with open(dens_file, "wb") as fp:
-        pickle.dump({"xgrid": xgrid, "dens": stan_dens}, fp)
+        pickle.dump(out, fp)
 
     print("************** FINISHED {0} ***************".format(chain_file))
 
@@ -96,30 +144,35 @@ if __name__ == "__main__":
     q = multiprocessing.Queue()
     jobs = []
     curr_jobs = 0
-    for j in list(range(3)):
+    for scen in list(range(3)):
         filenames = glob.glob(os.path.join(
-            args.data_path, "scenario{0}/*".format(j)))
+            args.data_path, "scenario{0}/*".format(scen)))
 
-        chaindir = os.path.join(outdir, "chains/scenario{0}".format(j))
-        densdir = os.path.join(outdir, "dens/scenario{0}".format(j))
+        chaindir = os.path.join(outdir, "chains/scenario{0}".format(scen))
+        densdir = os.path.join(outdir, "dens/scenario{0}".format(scen))
         os.makedirs(chaindir, exist_ok=True)
-        os.makedirs(chaindir, exist_ok=True)
+        os.makedirs(densdir, exist_ok=True)
 
         for filename in filenames:
             rep = filename.split("/")[-1].split(".")[0]
+            if rep == 1:
+                save_chain = True
+                save_dens = True
+            else:
+                save_chain = False
+                save_dens = False
+
             chainfile = os.path.join(chaindir, "{0}.pickle".format(rep))
             densfile = os.path.join(densdir, "{0}.pickle".format(rep))
-            print(chainfile)
-
             df = pd.read_csv(filename)
-
             currdata = []
             for g in range(ngroups):
                 currdata.append(df[df['group'] == g]['datum'].values)
 
             job = multiprocessing.Process(
                 target=run_jo, args=(
-                    deepcopy(stan_model), currdata, chainfile, densfile))
+                    deepcopy(stan_model), currdata, chainfile, densfile,
+                    scen, save_chain, save_dens))
             job.start()
             jobs.append(job)
             curr_jobs += 1
