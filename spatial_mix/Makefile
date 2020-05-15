@@ -12,8 +12,7 @@ CFLAGS = \
         -std=c++1y \
         -O3 \
         -MMD \
-        -I$(mkGslInc) \
-        -I/u/archive/dott/beraha/usr/include \
+        -I$(mkGslInc) -I/u/archive/dott/beraha/usr/include/ \
         -I$(STAN_ROOT_DIR) \
         -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
         -I$(STAN_ROOT_DIR)/lib/boost_1.72.0 \
@@ -57,7 +56,7 @@ $(SPIKES_OBJS): %.o: %.cpp
 		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
-	$(CXX) -shared $(CFLAGS) -I/u/archive/dott/beraha/python3_packages/include/python `$(PYTHON3) -m pybind11 --includes` \
+	$(CXX) -shared $(CFLAGS) `$(PYTHON3) -m pybind11 --includes` \
 		python_exports.cpp -o spmixtures`$(PYTHON3)-config --extension-suffix` \
 		$(OBJS) $(LDLIBS)
 
