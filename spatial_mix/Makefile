@@ -21,7 +21,7 @@ CFLAGS = \
         -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
         -D_REENTRANT -fPIC 
 
-LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGlsLib) -lgsl -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
+LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGslLib) -lgsl -lgslcblas -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb" -Wl,-rpath,$(mkGslLib)
 
 LDFLAGS = -O3 -D_REENTRANT
 
@@ -46,6 +46,7 @@ info:
 	@echo " OBJECTS = $(OBJS)"
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
+	@echo " LDLIBS = $(LDLIBS)"
 
 all: generate_pybind
 
