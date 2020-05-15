@@ -12,7 +12,7 @@ CFLAGS = \
         -std=c++1y \
         -O3 \
         -MMD \
-		-I$(mkGslInc) \
+        -I$(mkGslInc) \
         -I/u/archive/dott/beraha/usr/include \
         -I$(STAN_ROOT_DIR) \
         -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
@@ -21,12 +21,11 @@ CFLAGS = \
         -I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include \
         -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
         -D_REENTRANT -fPIC 
-LDLIBS = \
-        $(shell pkg-config --libs protobuf) -L/u/archive/dott/beraha/src/usr/lib/ 
-		-L$(mkGlsLib) -lgsl \
-        -L$(STAN_ROOT_DIR)/lib/tbb \
-        -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
+
+LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGlsLib) -lgsl -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
+
 LDFLAGS = -O3 -D_REENTRANT
+
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
 SPIKES_SRCS = $(wildcard $(SPIKES_DIR)/*.cpp)
