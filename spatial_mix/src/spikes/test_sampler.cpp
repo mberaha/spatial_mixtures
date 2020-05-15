@@ -1,7 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <stan/math/prim/mat.hpp>
+#include <stan/math/prim/prob.hpp>
 #include "../sampler.hpp"
 #include "../collector.hpp"
 #include "../recordio.hpp"
