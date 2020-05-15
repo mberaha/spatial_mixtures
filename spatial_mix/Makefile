@@ -1,28 +1,30 @@
 ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
-STAN_ROOT_DIR := /home/mario/dev/stan/math
+STAN_ROOT_DIR := /u/archive/dott/beraha/stan/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
+PROTOC := /u/archive/dott/beraha/usr/bin/protoc
 
 CXX = g++
 CFLAGS = \
-	-std=c++1y \
-	-O3 \
-	-MMD \
-	-I$(STAN_ROOT_DIR) \
-	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
-	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
-	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
-	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
-	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-	-D_REENTRANT -fPIC
+        -std=c++1y \
+        -O3 \
+        -MMD \
+        -I/u/archive/dott/beraha/usr/include \
+        -I$(STAN_ROOT_DIR) \
+        -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
+        -I$(STAN_ROOT_DIR)/lib/boost_1.72.0 \
+        -I$(STAN_ROOT_DIR)/lib/sundials_5.5.0/include \
+        -I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include \
+        -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
+        -D_REENTRANT -fPIC 
 LDLIBS = \
- 	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
-	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
+        $(shell pkg-config --libs protobuf) -L/u/archive/dott/beraha/src/usr/lib/ -lgsl \
+        -L$(STAN_ROOT_DIR)/lib/tbb \
+        -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
 LDFLAGS = -O3 -D_REENTRANT
-
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
 SPIKES_SRCS = $(wildcard $(SPIKES_DIR)/*.cpp)
@@ -45,30 +47,13 @@ info:
 	@echo " EXECS = $(SPIKES_EXECS)"
 	@echo " STAN_ROOT_DIR = $(STAN_ROOT_DIR)"
 
-all: run_from_file.out run_hdp_from_file.out generate_pybind $(SPIKES_EXECS)
+all: generate_pybind
 
-$(SPIKES_EXECS): %.out: %.o $(OBJS)
-	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
-
-$(SPIKES_OBJS): %.o: %.cpp
-		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
-	$(CXX) -shared $(CFLAGS) `$(PYTHON3) -m pybind11 --includes` \
+	$(CXX) -shared $(CFLAGS) -I/u/archive/dott/beraha/python3_packages/include/python `$(PYTHON3) -m pybind11 --includes` \
 		python_exports.cpp -o spmixtures`$(PYTHON3)-config --extension-suffix` \
 		$(OBJS) $(LDLIBS)
-
-run_from_file.out: run_from_file.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o run_from_file.out $(OBJS) run_from_file.o  $(LDLIBS)
-
-run_from_file.o:
-	$(CXX) $(CFLAGS) -c run_from_file.cpp -o run_from_file.o
-
-run_hdp_from_file.out: run_hdp_from_file.o $(OBJS)
-	$(CXX) $(LDFLAGS) -o run_hdp_from_file.out $(OBJS) run_hdp_from_file.o  $(LDLIBS)
-
-run_hdp_from_file.o:
-	$(CXX) $(CFLAGS) -c run_hdp_from_file.cpp -o run_hdp_from_file.o
 
 %.o : %.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
@@ -84,8 +69,8 @@ compile_protos:
 	@ mkdir -p $(PROTO_DIR)/cpp;
 	@ mkdir -p $(PROTO_DIR)/py;
 	@ for filename in $(PROTO_DIR)/*.proto; do \
-		protoc --proto_path=$(PROTO_DIR) --python_out=$(PROTO_DIR)/py/ $$filename; \
-		protoc --proto_path=$(PROTO_DIR) --cpp_out=$(PROTO_DIR)/cpp/ $$filename; \
+		$(PROTOC) --proto_path=$(PROTO_DIR) --python_out=$(PROTO_DIR)/py/ $$filename; \
+		$(PROTOC) --proto_path=$(PROTO_DIR) --cpp_out=$(PROTO_DIR)/cpp/ $$filename; \
 	done
 	@ for filename in $(PROTO_DIR)/cpp/*.cc; do \
 	    mv -- "$$filename" "$${filename%.cc}.cpp"; \

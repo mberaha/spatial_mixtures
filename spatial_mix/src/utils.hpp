@@ -11,6 +11,7 @@
 #include <stan/math/prim/prob.hpp>
 #include <stan/math/prim/fun.hpp>
 
+
 namespace utils {
 
 double trunc_normal_rng(
