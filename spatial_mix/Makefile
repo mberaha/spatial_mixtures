@@ -1,7 +1,7 @@
 ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
-STAN_ROOT_DIR := /u/archive/dott/beraha/stan/math
+STAN_ROOT_DIR := /u/archive/dott/beraha/usr/include/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
@@ -49,6 +49,11 @@ info:
 
 all: generate_pybind
 
+$(SPIKES_EXECS): %.out: %.o $(OBJS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) $< $(LDLIBS)
+
+$(SPIKES_OBJS): %.o: %.cpp
+		$(CXX) $(CFLAGS) -c $< -o $@
 
 generate_pybind: $(OBJS)
 	$(CXX) -shared $(CFLAGS) -I/u/archive/dott/beraha/python3_packages/include/python `$(PYTHON3) -m pybind11 --includes` \
