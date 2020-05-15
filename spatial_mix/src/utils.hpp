@@ -8,7 +8,9 @@
 #include <string>
 #include <fstream>
 #include <Eigen/Dense>
-#include <stan/math/prim.hpp>
+#include <stan/math/prim/prob.hpp>
+#include <stan/math/prim/fun.hpp>
+
 
 namespace utils {
 
