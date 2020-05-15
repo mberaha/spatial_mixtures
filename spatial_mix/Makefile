@@ -12,6 +12,7 @@ CFLAGS = \
         -std=c++1y \
         -O3 \
         -MMD \
+		-I$(mkGslInc) \
         -I/u/archive/dott/beraha/usr/include \
         -I$(STAN_ROOT_DIR) \
         -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
@@ -21,7 +22,8 @@ CFLAGS = \
         -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
         -D_REENTRANT -fPIC 
 LDLIBS = \
-        $(shell pkg-config --libs protobuf) -L/u/archive/dott/beraha/src/usr/lib/ -lgsl \
+        $(shell pkg-config --libs protobuf) -L/u/archive/dott/beraha/src/usr/lib/ 
+		-L$(mkGlsLib) -lgsl \
         -L$(STAN_ROOT_DIR)/lib/tbb \
         -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
 LDFLAGS = -O3 -D_REENTRANT
