@@ -9,23 +9,6 @@ PROTOC := /u/archive/dott/beraha/usr/bin/protoc
 
 CXX = g++
 CFLAGS = \
-<<<<<<< HEAD
-	-std=c++1y \
-	-O3 \
-	-MMD \
-	-fopenmp \
-	-I$(STAN_ROOT_DIR) \
-	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.3/ \
-	-I$(STAN_ROOT_DIR)/lib/boost_1.69.0/  \
-	-I$(STAN_ROOT_DIR)/lib/sundials_4.1.0/include  \
-	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include  \
-	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-	-D_REENTRANT -fPIC
-LDLIBS = \
- 	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
-	-lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
-LDFLAGS = -O3 -D_REENTRANT -fopenmp
-=======
         -std=c++1y \
         -O3 \
         -MMD \
@@ -41,7 +24,6 @@ LDFLAGS = -O3 -D_REENTRANT -fopenmp
 LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGslLib) -lgsl -lgslcblas -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb" -Wl,-rpath,$(mkGslLib)
 
 LDFLAGS = -O3 -D_REENTRANT
->>>>>>> 6962353709eae452ec33fc43b2fbbe3270db43b0
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)
