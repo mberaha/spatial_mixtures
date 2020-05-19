@@ -3,7 +3,7 @@
 
 #include <random>
 #include <vector>
-#include <stan/math/prim/mat.hpp>
+#include <stan/math/prim/prob.hpp>
 
 #include "mcmc_utils.hpp"
 #include "stirling_first.hpp"

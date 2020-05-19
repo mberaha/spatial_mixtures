@@ -1,7 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <stan/math/prim/mat.hpp>
+#include <stan/math/prim/prob.hpp>
 #include "../sampler.hpp"
 #include "../collector.hpp"
 #include "../recordio.hpp"
@@ -132,7 +132,7 @@ int main() {
     // Eigen::MatrixXd W = Eigen::MatrixXd::Zero(3, 3);
 
     SamplerParams params = loadTextProto<SamplerParams>(
-        "/home/mario/PhD/spatial_lda/spatial_mix/resources/sampler_params.asciipb");
+        "resources/sampler_params.asciipb");
     std::cout << params.DebugString() << std::endl;
 
     SpatialMixtureSampler spSampler(params, data, W);
