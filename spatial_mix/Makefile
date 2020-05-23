@@ -1,25 +1,25 @@
 ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
-STAN_ROOT_DIR := /u/archive/dott/beraha/usr/include/math
+STAN_ROOT_DIR := /u/archive/dott/peli/usr/include/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
-PROTOC := /u/archive/dott/beraha/usr/bin/protoc
+PROTOC := /u/archive/dott/peli/usr/bin/protoc
 
 CXX = g++
 CFLAGS = \
         -std=c++1y \
         -O3 \
         -MMD \
-        -I$(mkGslInc) -I/u/archive/dott/beraha/usr/include/ \
+        -I$(mkGslInc) -I/u/archive/dott/peli/usr/include/ \
         -I$(STAN_ROOT_DIR) \
         -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
         -I$(STAN_ROOT_DIR)/lib/boost_1.72.0 \
         -I$(STAN_ROOT_DIR)/lib/sundials_5.5.0/include \
         -I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include \
         -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-        -D_REENTRANT -fPIC 
+        -D_REENTRANT -fPIC
 
 LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGslLib) -lgsl -lgslcblas -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb" -Wl,-rpath,$(mkGslLib)
 
