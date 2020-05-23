@@ -1,18 +1,18 @@
 ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
-STAN_ROOT_DIR := /u/archive/dott/peli/usr/include/math
+STAN_ROOT_DIR := /u/archive/dott/$name/usr/include/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
-PROTOC := /u/archive/dott/peli/usr/bin/protoc
+PROTOC := /u/archive/dott/$name/usr/bin/protoc
 
 CXX = g++
 CFLAGS = \
         -std=c++1y \
         -O3 \
         -MMD \
-        -I$(mkGslInc) -I/u/archive/dott/peli/usr/include/ \
+        -I$(mkGslInc) -I/u/archive/dott/$name/usr/include/ \
         -I$(STAN_ROOT_DIR) \
         -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
         -I$(STAN_ROOT_DIR)/lib/boost_1.72.0 \
