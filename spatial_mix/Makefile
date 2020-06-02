@@ -1,7 +1,7 @@
 ROOT_DIR := ..
 PG_DIR := $(ROOT_DIR)/lib/polyagamma
 PROTO_DIR := $(ROOT_DIR)/spatial_mix/protos
-STAN_ROOT_DIR := /home/mario/dev/stan/math
+STAN_ROOT_DIR := $(ROOT_DIR)/lib/math
 SRC_DIR := $(ROOT_DIR)/spatial_mix/src
 SPIKES_DIR := $(SRC_DIR)/spikes
 PYTHON3 := $(if $(PYTHON3), $(PYTHON3), python3)
