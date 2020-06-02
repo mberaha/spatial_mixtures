@@ -68,7 +68,7 @@ def compute_G():
 
 
 def run_spmix(data, chain_file, dens_file):
-    sp_chains = spmix_utils.runSpatialMixtureSampler(
+    sp_chains, time = spmix_utils.runSpatialMixtureSampler(
         burnin, niter, thin, W, params_filename, data, [])
 
     spmix_utils.writeChains(sp_chains, chain_file)
