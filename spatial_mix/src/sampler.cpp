@@ -29,12 +29,10 @@ SpatialMixtureSampler::SpatialMixtureSampler(
     numdata = std::accumulate(
         samplesPerGroup.begin(), samplesPerGroup.end(), 0);
 
-    std::cout << "W \n" << W_init << std::endl;
 
     if (X.size() > 0) {
         regression = true;
         p_size = X[0].cols();
-        std::cout << "p_size: " << p_size << std::endl;
         reg_coeff_mean = Eigen::VectorXd::Zero(p_size);
         reg_coeff_prec = Eigen::MatrixXd::Identity(p_size, p_size);
         reg_coeff = stan::math::multi_normal_rng(
@@ -45,16 +43,10 @@ SpatialMixtureSampler::SpatialMixtureSampler(
         V.resize(numdata);
         mu.resize(numdata);
         int start = 0;
-        std::cout << "H" << std::endl;
-        std::cout << "numGroups: " << numGroups << std::endl;
         for (int i=0; i < numGroups; i++) {
-            std::cout << "i: " << i << ", start: " << start << ", samples: "
-                      << samplesPerGroup[i] << std::endl;
             predictors.block(start, 0, samplesPerGroup[i], p_size) = X[i];
-            std::cout << "predictors ok" << std::endl;
             reg_data.segment(start, samplesPerGroup[i]) = \
                 Eigen::Map<Eigen::VectorXd>(data[i].data(), samplesPerGroup[i]);
-            std::cout << "reg data ok" << std::endl;
             start += samplesPerGroup[i];
         }
         computeRegressionResiduals();
@@ -85,12 +77,6 @@ void SpatialMixtureSampler::init() {
     node2comp = utils::findConnectedComponents(W_init);
     auto it = std::max_element(node2comp.begin(), node2comp.end());
     num_connected_comps = *it + 1;
-
-    std::cout << "num connected components: " << num_connected_comps << std::endl;
-    std::cout << "node2comp: ";
-    for (auto &k : node2comp)
-        std::cout << k << ", ";
-    std::cout << std::endl;
 
     comp2node.resize(num_connected_comps);
     for (int i = 0; i < numGroups; i++)
@@ -131,11 +117,11 @@ void SpatialMixtureSampler::init() {
             cluster_allocs[i][j] = categorical_rng(weights.row(i), rng) - 1;
     }
 
-    W = W_init;
-    // normalize W
-    for (int i=0; i < W.rows(); ++i){
-      W.row(i) *= rho/W.row(i).sum();
-    }
+    // W = W_init;
+    // // normalize W
+    // for (int i=0; i < W.rows(); ++i){
+    //   W.row(i) *= rho/W.row(i).sum();
+    // }
 
     F = Eigen::MatrixXd::Zero(numGroups, numGroups);
     for (int i=0; i < numGroups; i++)
@@ -161,11 +147,7 @@ void SpatialMixtureSampler::init() {
 
     // last component is not used!
     mtildes = Eigen::MatrixXd::Zero(num_connected_comps, numComponents);
-    std::cout << "mtildes \n"
-              << mtildes << std::endl;
 
-    std::cout << "W \n" << W << std::endl;
-    // compute inverses of sigma(-h,h))
     pippo.resize(numComponents - 1);
     sigma_star_h = Eigen::MatrixXd::Zero(numGroups, numComponents - 1);
 
@@ -183,7 +165,7 @@ void SpatialMixtureSampler::sample()  {
     sampleAllocations();
     sampleWeights();
     sampleSigma();
-    // sampleRho();
+    sampleRho();
     sample_mtilde();
 }
 
@@ -227,7 +209,6 @@ void SpatialMixtureSampler::sampleAllocations() {
             probas /= probas.sum();
             cluster_allocs[i][j] = categorical_rng(
                 probas, rng) - 1;
-            // std::cout << "datum: " << datum << ", c_mean: " << means[cluster_allocs[i][j]] << std::endl;
         }
     }
 }
@@ -286,6 +267,7 @@ void SpatialMixtureSampler::sampleWeights() {
 
 // We use a MH step with a truncated normal proposal
 void SpatialMixtureSampler::sampleRho() {
+
     iter += 1;
     double curr = rho;
     double sigma;
@@ -301,58 +283,55 @@ void SpatialMixtureSampler::sampleRho() {
                 sigma = 2.38 * sigma_n_rho;
         }
     }
-    double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 1, rng);
-    Eigen::MatrixXd temp = utils::removeColumn(
-        transformed_weights, numComponents -1).transpose();
-    Eigen::VectorXd vectorizedWeights(Eigen::Map<Eigen::VectorXd>(
-        temp.data(), temp.size()));
-
-    Eigen::VectorXd meanVec(numGroups * (numComponents - 1));
-    for (int i=0; i < numGroups; i++)
-        meanVec.segment(i * (numComponents - 1), (numComponents - 1)) = \
-            mtildes.row(node2comp[i]).head(numComponents - 1).transpose();
-
+    double proposed = utils::trunc_normal_rng(curr, sigma, 0.0, 0.9999, rng);
+    
     // compute acceptance ratio
-    Eigen::MatrixXd rowVar = F - proposed * W_init;
+    Eigen::MatrixXd row_prec = F - proposed * W_init;
 
-    Eigen::MatrixXd prec = kroneckerProduct(rowVar, SigmaInv);
+    Eigen::MatrixXd temp = utils::removeColumn(
+        transformed_weights, numComponents -1);
+    Eigen::MatrixXd meanmat = Eigen::MatrixXd::Zero(numGroups, numComponents -1);
+    for (int i=0; i < numGroups; i++)
+        meanmat.row(i) = mtildes.row(node2comp[i]).head(numComponents - 1);
+
     double num = stan::math::beta_lpdf(proposed, alpha, beta) +
-                 stan::math::multi_normal_prec_lpdf(
-                    vectorizedWeights, meanVec, prec) +
+                 utils::matrix_normal_prec_lpdf(
+                     temp, meanmat, row_prec, SigmaInv) +
                  utils::trunc_normal_lpdf(proposed, curr, sigma, 0.0, 1);
 
-    rowVar = F - curr * W_init;
-    prec = kroneckerProduct(rowVar, SigmaInv);
+    row_prec = F - curr * W_init;
     double den = stan::math::beta_lpdf(curr, alpha, beta) +
-                  stan::math::multi_normal_prec_lpdf(
-                     vectorizedWeights, meanVec, prec) +
+                 utils::matrix_normal_prec_lpdf(
+                     temp, meanmat, row_prec, SigmaInv) +
                  utils::trunc_normal_lpdf(curr, proposed, sigma, 0.0, 1);
 
     double arate = std::min(1.0, std::exp(num-den));
     if (stan::math::uniform_rng(0.0, 1.0, rng) < arate) {
         rho = proposed;
         numAccepted += 1;
-        W = W_init;
-        // normalize W
-        for (int i=0; i < W.rows(); ++i){
-          W.row(i) *= rho / W.row(i).sum();
-        }
-
+        
         F = Eigen::MatrixXd::Zero(numGroups, numGroups);
         for (int i = 0; i < numGroups; i++)
-        {
             F(i, i) = rho * W_init.row(i).sum() + (1 - rho);
-        }
 
+        F_by_comp.resize(num_connected_comps);
+        G_by_comp.resize(num_connected_comps);
         for (int k = 0; k < num_connected_comps; k++)
         {
             Eigen::MatrixXd curr_f = Eigen::MatrixXd::Zero(
                 comp2node[k].size(), comp2node[k].size());
+            Eigen::MatrixXd curr_g = Eigen::MatrixXd::Zero(
+                comp2node[k].size(), comp2node[k].size());
             for (int i = 0; i < comp2node[k].size(); i++)
             {
                 curr_f(i, i) = F(comp2node[k][i], comp2node[k][i]);
+                for (int j = 0; j < comp2node[k].size(); j++)
+                {
+                    curr_g(i, j) = W_init(comp2node[k][i], comp2node[k][j]);
+                }
             }
             F_by_comp[k] = curr_f;
+            G_by_comp[k] = curr_g;
         }
     }
 
@@ -464,21 +443,21 @@ void SpatialMixtureSampler::sample_mtilde()
 
          Eigen::MatrixXd curr_f_min_rhoG = F_by_comp[k] - rho * G_by_comp[k];
 
-        Eigen::MatrixXd curr_prec = kroneckerProduct(curr_f_min_rhoG, SigmaInv);
+         Eigen::MatrixXd curr_prec = kroneckerProduct(curr_f_min_rhoG, SigmaInv);
 
-        Eigen::MatrixXd I_star = kroneckerProduct(
-            Eigen::VectorXd::Ones(comp2node[k].size()),
-            Eigen::MatrixXd::Identity((H - 1), (H - 1)));
-        
-        Eigen::MatrixXd prec_post = \
-            I_star.transpose() * curr_prec * I_star + prec_prior;
-        Eigen::VectorXd m_post = prec_post.ldlt().solve(
-            I_star.transpose() * curr_prec * currweights);
+         Eigen::MatrixXd I_star = kroneckerProduct(
+             Eigen::VectorXd::Ones(comp2node[k].size()),
+             Eigen::MatrixXd::Identity((H - 1), (H - 1)));
 
-        Eigen::VectorXd sampled = stan::math::multi_normal_prec_rng(
-            m_post, prec_post, rng);
+         Eigen::MatrixXd prec_post =
+             I_star.transpose() * curr_prec * I_star + prec_prior;
+         Eigen::VectorXd m_post = prec_post.ldlt().solve(
+             I_star.transpose() * curr_prec * currweights);
 
-        mtildes.row(k).head(H - 1) = sampled;
+         Eigen::VectorXd sampled = stan::math::multi_normal_prec_rng(
+             m_post, prec_post, rng);
+
+         mtildes.row(k).head(H - 1) = sampled;
     }
 }
 
