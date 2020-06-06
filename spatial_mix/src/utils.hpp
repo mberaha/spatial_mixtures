@@ -10,6 +10,7 @@
 #include <Eigen/Dense>
 #include <stan/math/prim/mat.hpp>
 
+
 namespace utils {
 
 double trunc_normal_rng(
