@@ -212,4 +212,11 @@ void _dephtFirstSearch(const Eigen::MatrixXd &adjacency, int curr_node,
     }
     return;
 }
+
+double matrix_normal_prec_lpdf(
+    Eigen::MatrixXd x, Eigen::MatrixXd m, Eigen::MatrixXd A,
+    Eigen::MatrixXd B)
+{
+    return -0.5 * (B * (x - m).transpose() * A * (x - m)).trace();
+}
 }
