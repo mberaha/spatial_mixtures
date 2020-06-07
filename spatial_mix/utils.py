@@ -163,12 +163,12 @@ def runSpatialMixtureSampler(
 
     serializedChains = []
     if checkFromFiles(data, W):
-        serializedChains = spmixtures.runSpatialSamplerFromFiles(
+        serializedChains, time = spmixtures.runSpatialSamplerFromFiles(
             burnin, niter, thin, data, W, params, covariates)
 
     elif checkFromData(data, W):
         params = maybeLoadParams(params)
-        serializedChains = spmixtures.runSpatialSamplerFromData(
+        serializedChains, time = spmixtures.runSpatialSamplerFromData(
             burnin, niter, thin, data, W, params.SerializeToString(),
             covariates)
 
@@ -176,4 +176,4 @@ def runSpatialMixtureSampler(
         logging.error("Data type not understood")
 
     return list(map(
-        lambda x: getDeserialized(x, UnivariateState), serializedChains))
+        lambda x: getDeserialized(x, UnivariateState), serializedChains)), time
