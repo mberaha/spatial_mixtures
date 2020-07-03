@@ -77,14 +77,47 @@ def estimateDensities(chains, xgrids, nproc=-1):
         weights_chain = np.vstack(
             [state.groupParams[g].weights for state in chains])
 
-        eval_normals = norm.pdf(np.hstack([xgrids[g].reshape(-1, 1)] * means_chain.shape[0]),
-                                means_chain,
-                                stdevs_chain
-                                ).reshape(len(xgrids[g]),
-                                          numIters,
-                                          num_components)
+        eval_normals = norm.pdf(
+            np.hstack([xgrids[g].reshape(-1, 1)] * means_chain.shape[0]),
+            means_chain,
+            stdevs_chain
+            ).reshape(len(xgrids[g]), numIters, num_components)
         out.append(np.sum(eval_normals*weights_chain, axis=-1).T)
     return out
+
+
+def estimateDensitiesRegression(chains, covariates, group):
+    numIters = len(chains)
+    out = []
+    num_components = chains[0].num_components
+    
+    means_chain = np.vstack(
+        [list(map(lambda x: x.mean, state.atoms)) for state in chains]
+    ).reshape(-1)
+
+
+    stdevs_chain = np.vstack(
+        [list(map(lambda x: x.stdev, state.atoms)) for state in chains]
+    ).reshape(-1)
+
+    weights_chain = np.vstack(
+        [state.groupParams[group].weights for state in chains])
+
+    regressor_chains = np.vstack(
+        [state.regression_coefficients for state in chains])
+
+    reg_means = np.dot(regressor_chains, covs)
+    max_err = np.max(np.abs(means_chain) + 5 * np.max(stdevs_chain))
+    xgrid = np.linspace(- max_err, max_err, 1000)
+    eval_normals = norm.pdf(
+        np.hstack([xgrid.reshape(-1, 1)] * means_chain.shape[0]
+                ), means_chain, stdevs_chain
+    ).reshape(len(xgrid), numIters, num_components)
+    eval_dens = np.sum(eval_normals*weights_chain, axis=-1).T + reg_means
+    return eval_dens, xgrid
+
+    
+
 
 
 def eval_stan_density(stanfit, xgrid):
@@ -142,7 +175,8 @@ def post_kl_div(estimatedDens, true, xgrid):
 
 
 def runSpatialMixtureSampler(
-        burnin, niter, thin, W, params, data, covariates=[]):
+        burnin, niter, thin, W, params, data, covariates=[], 
+        num_components=None):
 
     def checkFromFiles(data, W):
         return isinstance(data, str) and isinstance(W, str)
@@ -168,6 +202,8 @@ def runSpatialMixtureSampler(
 
     elif checkFromData(data, W):
         params = maybeLoadParams(params)
+        if num_components is not None:
+            params.num_components = num_components
         serializedChains, time = spmixtures.runSpatialSamplerFromData(
             burnin, niter, thin, data, W, params.SerializeToString(),
             covariates)

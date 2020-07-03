@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stan/math/prim/mat.hpp>
+
 #include <random>
 
 int main() {

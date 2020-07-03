@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <stan/math/prim/mat.hpp>
+
 #include "../sampler.hpp"
 #include "../collector.hpp"
 #include "../recordio.hpp"

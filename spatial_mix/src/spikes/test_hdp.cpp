@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <stan/math/prim/mat.hpp>
+
 #include "../hdp.hpp"
 #include "../recordio.hpp"
 #include <random>
