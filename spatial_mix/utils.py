@@ -18,6 +18,9 @@ import spmixtures
 
 
 def loadChains(filename, msgType=UnivariateState):
+    """
+    Loads an MCMC chain from a .recordio file, returns a list of 'msgType'
+    """
     out = []
     with open(filename, "rb") as fp:
         buf = fp.read()
@@ -39,6 +42,9 @@ def loadChains(filename, msgType=UnivariateState):
 
 
 def writeChains(chains, filename):
+    """
+    Serializes a list of messages to a file
+    """
     with open(filename, "wb") as fp:
         for c in chains:
             try:
@@ -51,12 +57,20 @@ def writeChains(chains, filename):
 
 
 def estimateDensity(weights, means, stdevs, xgrid):
+    """
+    Estimate the density of a normal mixtures with parameters 
+    'weights', 'means' and 'stdevs' over 'xgrid'
+    """
     return np.dot(norm.pdf(
         np.hstack([xgrid.reshape(-1, 1)] * len(means)), means, stdevs),
                   weights)
 
 
 def estimateDensities(chains, xgrids, nproc=-1):
+    """
+    Given a list of messages representing the MCMC output, evaluates
+    the density on 'xgrid' for each step of the chain
+    """
     numGroups = len(chains[0].groupParams)
     if not isinstance(xgrids, list):
         xgrids = [xgrids] * numGroups
@@ -87,6 +101,11 @@ def estimateDensities(chains, xgrids, nproc=-1):
 
 
 def estimateDensitiesRegression(chains, covariates, group):
+    """
+    Estimates the predictive density for a new sample in areal location 
+    'group' with covariate information as 'covariates' given the 
+    MCMC output 'chains'
+    """
     numIters = len(chains)
     out = []
     num_components = chains[0].num_components
@@ -116,11 +135,12 @@ def estimateDensitiesRegression(chains, covariates, group):
     eval_dens = np.sum(eval_normals*weights_chain, axis=-1).T + reg_means
     return eval_dens, xgrid
 
-    
-
-
 
 def eval_stan_density(stanfit, xgrid):
+    """
+    Given a StanFit output, evaluates the density on 'xgrid' for each
+    step of the chain
+    """
     means = stanfit.extract("means")["means"]
     variances = stanfit.extract("vars")["vars"]
     weights = stanfit.extract("weights")["weights"]
@@ -145,31 +165,53 @@ def eval_stan_density(stanfit, xgrid):
 
 
 def lpml(densities):
+    """
+    Log Pseudo Marginal Likelihood
+    """
     if isinstance(densities, list):
         densities = np.hstack(densities)
     return np.sum(1 / np.mean(1 / densities, axis=0))
 
 
 def getDeserialized(serialized, objType):
+    """
+    Utility to de-serialize a message from a string
+    """
     out = objType()
     out.ParseFromString(serialized)
     return out
 
 
 def hellinger_dist(p, q, xgrid):
+    """
+    Hellinger distance between p and q evaluated on xgrid
+    """
     return np.sqrt(0.5 * simps((np.sqrt(p) - np.sqrt(q))** 2, xgrid))
 
 
 def post_hellinger_dist(estimatedDens, true, xgrid):
+    """
+    For each step of the chain, computes the Hellinger distance between 
+    the density estimate at that step and the true data generating density
+    evaluated at 'xgrid' 
+    """
     return np.apply_along_axis(
         lambda x: hellinger_dist(x, true, xgrid), 1, estimatedDens)
 
 
 def kl_div(p, q, xgrid):
+    """
+    Kullback-Leibler divergence between p and q evaluated on xgrid
+    """
     return simps(p * (np.log(p + 1e-5) - np.log(q + 1e-5)), xgrid)
 
 
 def post_kl_div(estimatedDens, true, xgrid):
+    """
+    For each step of the chain, computes the KL divergence between 
+    the density estimate at that step and the true data generating density
+    evaluated at 'xgrid' 
+    """
     return np.apply_along_axis(
         lambda x: kl_div(true, x, xgrid), 1, estimatedDens)
 
@@ -177,7 +219,37 @@ def post_kl_div(estimatedDens, true, xgrid):
 def runSpatialMixtureSampler(
         burnin, niter, thin, W, params, data, covariates=[], 
         num_components=None):
+    """
+    Runs the Gibbs sampler for the SPMIX model for a total of burnin + niter
+    iterations, discarding the first 'burnin' ones and keeping in memory
+    only one every 'thin' iterations.
 
+    Parameters
+    ----------
+    burnin: int 
+        Number of steps of the burnin
+    niter: int
+        Number of steps to run *after* the burnin
+    thin: int 
+        Keep only one every 'thin' iterations
+    W: either np.array or string
+        If np.array, the proximity matrix
+        If string, path to a file (csv) storing the proximity matrix
+    params: either SamplerParams or string
+        If SamplerParams, the sampler parameters
+        If string, path to an 'asciipb' file (human readable) containing 
+        the params
+    data: either string or list[np.array]
+        If string, list to a csv file representing the data
+        If list[np.array]: the data. Entry in position 'g' of such list
+        contains all the data for group g
+    covariates: list[np.array] (optional)
+        If not empty, the model will perform a regression on these covariates
+    num_components: int (default=None)
+        Gives the possibility to override the num_components parameter in
+        'params'. Useful b.c. protobuf and pickle (and thus multiprocessing)
+        don't mix well.
+    """
     def checkFromFiles(data, W):
         return isinstance(data, str) and isinstance(W, str)
 

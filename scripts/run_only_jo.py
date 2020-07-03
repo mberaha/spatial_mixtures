@@ -1,3 +1,13 @@
+"""
+This scripts runs the CK-CAR model from Jo el al (2017) for the simulated
+example #1
+To generate data, use the script scripts/generate_simulation1_data.py
+
+Usage: from the root folder (../), run
+python3 -m scripts.run_only_jo \
+    --data_path=<path_to_data_files> --output_path=<path_to_output_folde>
+"""
+
 import argparse
 import glob
 import multiprocessing

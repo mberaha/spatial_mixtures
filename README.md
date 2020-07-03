@@ -14,6 +14,15 @@ For linux distros it should suffice to run
   sudo apt-get install python3-lib2to3
   sudo apt-get install python3-toolz
 ```
+
+Although it is possible to use this repository as a standalone C++ project
+(see spatial_mix/run_from_file.cpp), it is highly recommended to export 
+the C++ executables to Python, for this the pybind11 library is needed.
+To install:
+```shell
+  pip3 install pybind11
+```
+
 # Setup
 
 After cloning the repository, update the submodules via
@@ -30,11 +39,12 @@ Then, from the terminal run
 
 To compile the protocol buffers
 ```shell
+  cd spatial_mix
   make compile_protos
 ```
 
-To run one of the spike tests (test_protos, test_stan, test_pg)
+To compile the C++ code and generate the Python package
 ```shell
-  make test_protos.out
-  ./test_protos.out
+  cd spatial_mix
+  make generate_pybind
 ```

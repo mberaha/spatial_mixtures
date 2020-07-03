@@ -1,3 +1,13 @@
+"""
+This scripts runs the SPMIX and HDP model for the simulated example #1
+To generate data, use the script scripts/generate_simulation1_data.py
+
+Usage: from the root folder (../), run
+python3 -m scripts.run_simulation_1 \
+    --data_path=<path_to_data_files> --spmix="t" --hdp="t"
+"""
+
+
 import argparse
 import glob
 import multiprocessing

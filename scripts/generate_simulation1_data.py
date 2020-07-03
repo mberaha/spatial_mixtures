@@ -1,3 +1,11 @@
+"""
+This scripts generates the data for the somulated example #1
+
+Usage: from the root folder (../), run
+python3 -m scripts.generate_simulation1_data \
+    --output_path=<path_to_output_folder>
+"""
+
 import argparse
 import multiprocessing
 import os

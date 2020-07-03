@@ -11,6 +11,11 @@ import spmixtures #noqa
 
 
 def estimateDensity(cluster_sizes, betas, atoms, params, xgrid):
+    """
+    Estimates the density over 'xgrid' in a given iteration.
+    Please don't call this function but 'estimateDensities' that
+    will estimate the density for each step of the MCMC
+    """
     out = np.zeros(len(xgrid))
     weights = np.zeros(len(atoms))
     ntot = sum(cluster_sizes)
@@ -42,6 +47,10 @@ def _aux(state, g, xgrid):
 
 
 def estimateDensities(chains, xgrids, nproc=-1):
+    """
+    Given a list of messages representing the MCMC output, evaluates
+    the density on 'xgrid' for each step of the chain
+    """
     numGroups = len(chains[0].groupParams)
     if not isinstance(xgrids, list):
         xgrids = [xgrids] * numGroups
@@ -68,11 +77,29 @@ def estimateDensities(chains, xgrids, nproc=-1):
 
 
 def getDeserialized(serialized, objType):
+    """
+    Utility to de-serialize a message from a string
+    """
     out = objType()
     out.ParseFromString(serialized)
     return out
 
 def runHdpSampler(burnin, niter, thin, data):
+    """
+    Runs the HDP sampler
+
+    Parameters
+    ----------
+    burnin: int 
+        Number of steps of the burnin
+    niter: int
+        Number of steps to run *after* the burnin
+    thin: int 
+        Keep only one every 'thin' iterations
+    data: list[np.array]
+        The data. Entry in position 'g' of such list
+        contains all the data for group g
+    """
     serializedChains, time = spmixtures.runHdpPythonFromData(
             burnin, niter, thin, data)
 
