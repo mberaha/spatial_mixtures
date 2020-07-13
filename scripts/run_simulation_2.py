@@ -1,15 +1,41 @@
+# run from spatial_lda: python3 -m scripts.run_simulation2
+
 import argparse
 import os
 import pickle
-
+import multiprocessing
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
+import time
 
-from joblib import Parallel, delayed
+from scipy.integrate import simps
+
 
 import spatial_mix.utils as spmix_utils
+import spatial_mix.hdp_utils as hdp_utils
+
 
 np.random.seed(2129419)
+xgrid = np.linspace(-10, 10, 1000)
+
+
+def hellinger_dist(p, q, xgrid):
+    return np.sqrt(0.5 * simps((np.sqrt(p) - np.sqrt(q)) ** 2, xgrid))
+
+
+def post_hellinger_dist(estimatedDens, true, xgrid):
+    return np.apply_along_axis(
+        lambda x: hellinger_dist(x, true, xgrid), 1, estimatedDens)
+
+
+def kl_div(p, q, xgrid):
+    return simps(p * (np.log(p + 1e-5) - np.log(q + 1e-5)), xgrid)
+
+
+def post_kl_div(estimatedDens, true, xgrid):
+    return np.apply_along_axis(
+        lambda x: kl_div(true, x, xgrid), 1, estimatedDens)
 
 
 def inv_alr(x):
@@ -48,6 +74,16 @@ def simulate_from_mixture(weights):
     return np.random.normal(loc=means[comp], scale=1)
 
 
+def true_densities(xgrid, weights):
+    means = [-5, 0, 5]
+    true_dens = []
+    for w in weights:
+        true_dens.append(w[0] * norm.pdf(xgrid, means[0], 1.0) +
+                         w[1] * norm.pdf(xgrid, means[1], 1.0) +
+                         w[2] * norm.pdf(xgrid, means[2], 1.0))
+    return true_dens
+
+
 def simulate_data(weights, numSamples):
     data = []
     for i in range(len(weights)):
@@ -56,7 +92,8 @@ def simulate_data(weights, numSamples):
     return pd.DataFrame(data, columns=["group", "datum"])
 
 
-def compute_G():
+def compute_G(Nx, Ny):
+    N = Nx*Ny
     G = np.diag(np.ones(N-1), 1) + np.diag(np.ones(N-1), -1) +\
         np.diag(np.ones(N-Nx), Nx) + np.diag(np.ones(N-Nx), -Nx)
     # tolgo i bordi
@@ -67,77 +104,132 @@ def compute_G():
     return G
 
 
-def run_spmix(data, chain_file, dens_file):
+def run_spmix(data, dens_file, true_dens, index, rep, times):
     sp_chains, time = spmix_utils.runSpatialMixtureSampler(
         burnin, niter, thin, W, params_filename, data, [])
 
-    spmix_utils.writeChains(sp_chains, chain_file)
+    times[index, rep] = time
+
+    # spmix_utils.writeChains(sp_chains, chain_file)
     sp_dens = spmix_utils.estimateDensities(sp_chains, xgrid)
+    save_errors(sp_dens, true_dens, rep, dens_file)
+
+
+def run_hdp(data, dens_file, true_dens, index, rep, times):
+    hdp_chains, time = hdp_utils.runHdpSampler(
+        burnin, niter, thin, data)
+
+    times[index, rep] = time
+    # spmix_utils.writeChains(hdp_chains, chain_file)
+    hdp_dens = hdp_utils.estimateDensities(hdp_chains, xgrid)
+
+    save_errors(hdp_dens, true_dens, rep, dens_file)
+
+    # with open(dens_file, "wb") as fp:
+    #     pickle.dump({"xgrid": xgrid, "dens": hdp_dens}, fp)
+
+
+def save_errors(estimate_dens, true_dens, rep, dens_file):
+
+    kl_divs = []
+    hell_dists = []
+    for i, dens in enumerate(estimate_dens):
+
+        hell_dists.append((rep, i, np.mean(post_hellinger_dist(
+            dens, true_dens[i], xgrid))))
+
+        kl_divs.append((rep, i, np.mean(post_kl_div(
+            dens, true_dens[i], xgrid))))
+
+    out = {'xgrid': xgrid, 'hell_dist': hell_dists, 'kl_divs': kl_divs}
 
     with open(dens_file, "wb") as fp:
-        pickle.dump({"xgrid": xgrid, "dens": sp_dens}, fp)
+        pickle.dump(out, fp)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--simulate_data", type=str, default="")
     parser.add_argument("--output_path", type=str, default="data/simulation2/")
+    parser.add_argument("--njobs", type=int, default=4)
     args = parser.parse_args()
 
-    datas = []
-    data_filenames = []
-    weights_filenames = []
-    spmix_chains_filenames = []
-    spmix_dens_filenames = []
+    outdir_sp = os.path.join(args.output_path, "spmix")
+    os.makedirs(outdir_sp, exist_ok=True)
 
-    nproc = 3
+    outdir_hdp = os.path.join(args.output_path, "hdp")
+    os.makedirs(outdir_hdp, exist_ok=True)
 
     params_filename = "spatial_mix/resources/sampler_params.asciipb"
 
-    xgrid = np.linspace(-10, 10, 1000)
+    Nx = [2, 4, 8, 16, 32]
+    num_repetions = 10
+    num_data_per_group = 50
 
-    data_filenames.append(
-        os.path.join(args.output_path +
-                     "data.csv"))
-    weights_filenames.append(
-        os.path.join(args.output_path +
-                     "weights.csv"))
-    spmix_chains_filenames.append(
-        os.path.join(args.output_path +
-                     "spmix_chains.recordio"))
-    spmix_dens_filenames.append(
-        os.path.join(args.output_path +
-                     "spmix_dens.pickle"))
-
-    Nx = 4
-    Ny = 4
-    N = Nx*Ny
-    if args.simulate_data:
-        weights = get_weights(Nx, Ny)
-        datas.append(simulate_data(weights, 100))
-        datas[0].to_csv(data_filenames[0], index=False)
-        pd.DataFrame(weights).to_csv(weights_filenames[0], index=False)
-    else:
-        datas.append(pd.read_csv(data_filenames[0]))
-        raise Warning('Meglio simulare i dati di nuovo,'
-                      + 'non so se è coerente il numero di location con i dati')
-
-    # run models
     burnin = 10000
     niter = 10000
     thin = 5
-    ngroups = N
-    W = compute_G()
 
-    # first our model, in parallel
-    groupedDatas = []
+    q = multiprocessing.Queue()
+    jobs = []
 
-    curr = []
-    df = datas[0]
-    for g in range(ngroups):
-        curr.append(df[df['group'] == g]['datum'].values)
-    groupedDatas.append(curr)
+    curr_jobs = 0
 
-    Parallel(n_jobs=nproc)(
-        delayed(run_spmix)(data, chain, dens) for data, chain, dens in zip(
-            groupedDatas, spmix_chains_filenames, spmix_dens_filenames))
+    sp_times = np.zeros((len(Nx), num_repetions))
+    hdp_times = np.zeros((len(Nx), num_repetions))
+
+    # number of locations
+    for index, n in enumerate(Nx):
+        ngroups = n**2
+        W = compute_G(n, n)
+
+        # create
+        densdir_sp = os.path.join(outdir_sp, "dens/areas{0}".format(ngroups))
+        densdir_hdp = os.path.join(outdir_hdp, "dens/areas{0}".format(ngroups))
+
+        os.makedirs(densdir_sp, exist_ok=True)
+        os.makedirs(densdir_hdp, exist_ok=True)
+
+        # repetitions
+        for rep in range(num_repetions):
+            # simulate data
+            weights = get_weights(n, n)
+            datas = simulate_data(weights, num_data_per_group)
+            true_dens = true_densities(xgrid, weights)
+            # first our model, in parallel
+            groupedData = []
+            for g in range(ngroups):
+                groupedData.append(datas[datas['group'] == g]['datum'].values)
+
+            # spmix
+            densfile = os.path.join(densdir_sp, "{0}.pickle".format(rep))
+            start_sp = time.time()
+            job1 = multiprocessing.Process(
+                target=run_spmix, args=(groupedData, densfile, true_dens, index,
+                rep, sp_times))
+            job1.start()
+            jobs.append(job1)
+            curr_jobs += 1
+
+            # hdp
+            densfile = os.path.join(densdir_hdp, "{0}.pickle".format(rep))
+
+            job2 = multiprocessing.Process(
+                target=run_hdp, args=(groupedData, densfile, true_dens, index,
+                rep, hdp_times))
+            job2.start()
+            jobs.append(job2)
+            curr_jobs += 1
+
+            if curr_jobs == args.njobs:
+                for j in jobs:
+                    j.join()
+
+            jobs = []
+            curr_jobs = 0
+
+        for j in jobs:
+            j.join()
+
+    # save times
+    with open(os.path.join(args.output_path, "times.pickle"), "wb") as fp:
+        pickle.dump({"sp_times": sp_times, "hdp_times": hdp_times}, fp)

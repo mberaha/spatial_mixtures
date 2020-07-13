@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -S /bin/bash
+
+
+#-----------------SETTING THE REQUEST FOR THE HARDWARE ALLOCATION----#
+
+#PBS -l nodes=1:ppn=20,walltime=24:00:00 -q gigat
+
+# Set the job name
+#PBS -N sim2_gigat
+
+# Set the output file and merge it to the sterr
+#PBS -o out-hostname-XyZ-N1x1-qsub.txt
+#PBS -j oe
+#PBS -e out-hostname-XyZ-N1x1.txt
+
+
+#------------------SETTING THE ENVIRONMENT----------------------------#
+# Start the job in the current directory (PBS starts in the home folder)
+cd ${PBS_O_WORKDIR}
+
+export mkPrefix=/u/sw
+source $mkPrefix/etc/profile
+
+export name=peli
+
+module load gcc-glibc/9
+
+export PYTHONPATH=/u/archive/dott/$name/.local/lib/python3.8/site-packages
+export PATH=$PATH:/u/archive/dott/$name/.local/bin
+
+source /u/archive/dott/$name/virtualenvs/spmix/bin/activate
+
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/u/archive/dott/$name/usr/lib/pkgconfig
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/u/archive/dott/$name/usr/lib
+
+module load gsl
+
+cd spatial_lda/spatial_mix
+make generate_pybind &> pybind.txt
+cd ../..
+
+#-------------------RUN THE EXECUTABLE---------------------------------#
+
+python3 -m scripts.run_simulation_2 --output_path=/u/archive/dott/peli/data/spatial_mix/simulation2 --njobs=20 &> run_sim_2_log.txt
