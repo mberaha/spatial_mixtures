@@ -1,3 +1,13 @@
+spatial_mix/.cpp
+spatial_mix/.depend
+spatial_mix/.idea/
+spatial_mix/.vscode/
+spatial_mix/__init__.py
+spatial_mix/protos/__init__.py
+spatial_mix/protos/py/
+spatial_mix/resources/mc_car_ssm.rds
+
+spatial_mix/src/spikes/*
 data/*
 
 # protos
