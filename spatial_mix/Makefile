@@ -9,21 +9,20 @@ PROTOC := /u/archive/dott/beraha/usr/bin/protoc
 
 CXX = g++
 CFLAGS = \
-        -std=c++1y \
-        -O3 \
-        -MMD \
-        -I$(mkGslInc) -I/u/archive/dott/beraha/usr/include/ \
-        -I$(STAN_ROOT_DIR) \
-        -I$(STAN_ROOT_DIR)/lib/eigen_3.3.7 \
-        -I$(STAN_ROOT_DIR)/lib/boost_1.72.0 \
-        -I$(STAN_ROOT_DIR)/lib/sundials_5.5.0/include \
-        -I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include \
-        -I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
-        -D_REENTRANT -fPIC 
-
-LDLIBS = $(shell pkg-config --libs protobuf)  -L$(mkGslLib) -lgsl -lgslcblas -L$(STAN_ROOT_DIR)/lib/tbb -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb" -Wl,-rpath,$(mkGslLib)
-
-LDFLAGS = -O3 -D_REENTRANT
+	-std=c++1y \
+	-O3 \
+	-MMD \
+	-I$(STAN_ROOT_DIR) -I$(mkGslInc) \
+	-I$(STAN_ROOT_DIR)/lib/eigen_3.3.7/ \
+	-I$(STAN_ROOT_DIR)/lib/boost_1.72.0/  \
+	-I$(STAN_ROOT_DIR)/lib/sundials_5.5.0/include  \
+	-I$(STAN_ROOT_DIR)/lib/tbb_2019_U8/include -I/u/archive/dott/beraha/usr/include \
+	-I$(PG_DIR) -I$(PG_DIR)/include -I$(PROTO_DIR)/cpp \
+	-D_REENTRANT -fPIC
+LDLIBS = \
+ 	$(shell pkg-config --libs protobuf) -L$(STAN_ROOT_DIR)/lib/tbb \
+	-L$(mkGslLib) -lgsl -lgslcblas -lpthread -ltbb -Wl,-rpath,"$(STAN_ROOT_DIR)/lib/tbb"
+LDFLAGS = -O3 -D_REENTRANT -fopenmp
 
 PROTO_SRCS = $(wildcard $(PROTO_DIR)/cpp/*.cpp)
 PG_SRCS = $(wildcard $(PG_DIR)/*.cpp) $(wildcard $(PG_DIR)/include/*.cpp)

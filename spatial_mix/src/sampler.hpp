@@ -12,7 +12,7 @@
 #include "univariate_mixture_state.pb.h"
 #include "sampler_params.pb.h"
 #include "PolyaGammaHybrid.h"
-#include <stan/math/prim/prob.hpp>
+#include <stan/math/prim.hpp>
 #include "mcmc_utils.hpp"
 #include "utils.hpp"
 

@@ -22,7 +22,7 @@ xgrid = np.linspace(-10, 10, 1000)
 
 
 def run_spmix(data, chain_file, dens_file):
-    sp_chains = spmix_utils.runSpatialMixtureSampler(
+    sp_chains, time = spmix_utils.runSpatialMixtureSampler(
         burnin, niter, thin, W, params_filename, data, [])
 
     spmix_utils.writeChains(sp_chains, chain_file)
@@ -33,7 +33,7 @@ def run_spmix(data, chain_file, dens_file):
 
 
 def run_hdp(data, chain_file, dens_file):
-    hdp_chains = hdp_utils.runHdpSampler(
+    hdp_chains, time = hdp_utils.runHdpSampler(
         burnin, niter, thin, data)
 
     spmix_utils.writeChains(hdp_chains, chain_file)

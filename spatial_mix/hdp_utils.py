@@ -73,8 +73,8 @@ def getDeserialized(serialized, objType):
     return out
 
 def runHdpSampler(burnin, niter, thin, data):
-    serializedChains = spmixtures.runHdpPythonFromData(
+    serializedChains, time = spmixtures.runHdpPythonFromData(
             burnin, niter, thin, data)
 
     return list(map(
-        lambda x: getDeserialized(x, HdpState), serializedChains))
+        lambda x: getDeserialized(x, HdpState), serializedChains)), time
