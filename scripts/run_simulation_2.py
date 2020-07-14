@@ -103,29 +103,28 @@ def compute_G(Nx, Ny):
     return G
 
 
-def run_spmix(data, dens_file, true_dens, index, rep, times):
+def run_spmix(data, dens_file, true_dens, time_path, index, rep):
     sp_chains, time = spmix_utils.runSpatialMixtureSampler(
         burnin, niter, thin, W, params_filename, data, [])
 
-    times[index, rep] = time
 
     # spmix_utils.writeChains(sp_chains, chain_file)
     sp_dens = spmix_utils.estimateDensities(sp_chains, xgrid)
     save_errors(sp_dens, true_dens, rep, dens_file)
+    with open(os.path.join(time_path, "sp_time_"+str(index)+"_"+str(rep)), "wb") as fp:
+         pickle.dump({"time": time}, fp)
 
-
-def run_hdp(data, dens_file, true_dens, index, rep, times):
+def run_hdp(data, dens_file, true_dens, time_path, index, rep):
     hdp_chains, time = hdp_utils.runHdpSampler(
         burnin, niter, thin, data)
 
-    times[index, rep] = time
     # spmix_utils.writeChains(hdp_chains, chain_file)
     hdp_dens = hdp_utils.estimateDensities(hdp_chains, xgrid)
 
     save_errors(hdp_dens, true_dens, rep, dens_file)
 
-    # with open(dens_file, "wb") as fp:
-    #     pickle.dump({"xgrid": xgrid, "dens": hdp_dens}, fp)
+    with open(os.path.join(time_path, "hdp_time_"+str(index)+"_"+str(rep)), "wb") as fp:
+         pickle.dump({"time": time}, fp)
 
 
 def save_errors(estimate_dens, true_dens, rep, dens_file):
@@ -146,16 +145,6 @@ def save_errors(estimate_dens, true_dens, rep, dens_file):
         pickle.dump(out, fp)
 
 
-def run_hdp(data, chain_file, dens_file):
-    hdp_chains = hdp_utils.runHdpSampler(
-        burnin, niter, thin, data)
-
-    spmix_utils.writeChains(hdp_chains, chain_file)
-    hdp_dens = hdp_utils.estimateDensities(hdp_chains, xgrid)
-    with open(dens_file, "wb") as fp:
-        pickle.dump({"xgrid": xgrid, "dens": hdp_dens}, fp)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_path", type=str, default="data/simulation2/")
@@ -170,7 +159,7 @@ if __name__ == "__main__":
 
     params_filename = "spatial_mix/resources/sampler_params.asciipb"
 
-    Nx = [2, 4, 8, 16, 32]
+    Nx = [2, 4, 8, 16]
     num_repetions = 10
     num_data_per_group = 50
 
@@ -182,9 +171,6 @@ if __name__ == "__main__":
     jobs = []
 
     curr_jobs = 0
-
-    sp_times = np.zeros((len(Nx), num_repetions))
-    hdp_times = np.zeros((len(Nx), num_repetions))
 
     # number of locations
     for index, n in enumerate(Nx):
@@ -213,8 +199,8 @@ if __name__ == "__main__":
             densfile = os.path.join(densdir_sp, "{0}.pickle".format(rep))
             start_sp = time.time()
             job1 = multiprocessing.Process(
-                target=run_spmix, args=(groupedData, densfile, true_dens, index,
-                rep, sp_times))
+                target=run_spmix, args=(groupedData, densfile, true_dens,
+	    args.output_path, index, rep))
             job1.start()
             jobs.append(job1)
             curr_jobs += 1
@@ -223,8 +209,8 @@ if __name__ == "__main__":
             densfile = os.path.join(densdir_hdp, "{0}.pickle".format(rep))
 
             job2 = multiprocessing.Process(
-                target=run_hdp, args=(groupedData, densfile, true_dens, index,
-                rep, hdp_times))
+                target=run_hdp, args=(groupedData, densfile, true_dens,
+ 	    args.output_path, index, rep))
             job2.start()
             jobs.append(job2)
             curr_jobs += 1
@@ -238,7 +224,3 @@ if __name__ == "__main__":
 
         for j in jobs:
             j.join()
-
-    # save times
-    with open(os.path.join(args.output_path, "times.pickle"), "wb") as fp:
-        pickle.dump({"sp_times": sp_times, "hdp_times": hdp_times}, fp)
