@@ -22,7 +22,7 @@ cd ${PBS_O_WORKDIR}
 export mkPrefix=/u/sw
 source $mkPrefix/etc/profile
 
-export name=beraha
+export name=peli
 
 module load gcc-glibc/9
 
@@ -35,7 +35,6 @@ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/u/archive/dott/$name/usr/lib/pkgconfig
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/u/archive/dott/$name/usr/lib
 
 module load gsl
-
 
 #-------------------RUN THE EXECUTABLE---------------------------------#
 

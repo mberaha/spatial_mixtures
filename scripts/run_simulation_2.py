@@ -48,8 +48,8 @@ def get_weights(Nx, Ny):
     centers = np.zeros((N, 2))
     for i in range(Nx):
         for j in range(Ny):
-            centers[i + j*Nx, :] = np.array([i + 0.5, j + 0.5])
-    c = 0.3
+            centers[i + j*Nx, :] = np.array([(i + 0.5)/Nx, (j + 0.5)/Ny])
+    c = 3
     alpha1 = c
     alpha2 = -c
     beta1 = c
@@ -132,12 +132,12 @@ def save_errors(estimate_dens, true_dens, rep, dens_file):
     kl_divs = []
     hell_dists = []
     for i, dens in enumerate(estimate_dens):
+        mean_dens = np.mean(dens, axis=0)
+        hell_dists.append((rep, i, hellinger_dist(
+            mean_dens, true_dens[i], xgrid)))
 
-        hell_dists.append((rep, i, np.mean(post_hellinger_dist(
-            dens, true_dens[i], xgrid))))
-
-        kl_divs.append((rep, i, np.mean(post_kl_div(
-            dens, true_dens[i], xgrid))))
+        kl_divs.append((rep, i, kl_div(
+            mean_dens, true_dens[i], xgrid)))
 
     out = {'xgrid': xgrid, 'hell_dist': hell_dists, 'kl_divs': kl_divs}
 
@@ -159,9 +159,9 @@ if __name__ == "__main__":
 
     params_filename = "spatial_mix/resources/sampler_params.asciipb"
 
-    Nx = [2, 4, 8, 16]
+    Nx = [2, 4, 8, 16, 32]
     num_repetions = 10
-    num_data_per_group = 50
+    num_data_per_group = 25
 
     burnin = 10000
     niter = 10000
