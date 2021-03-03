@@ -1,23 +1,22 @@
 #ifndef SRC_UTILS_HPP
 #define SRC_UTILS_HPP
 
+#include <Eigen/Dense>
+#include <fstream>
 #include <map>
 #include <random>
-#include <vector>
 #include <sstream>
-#include <string>
-#include <fstream>
-#include <Eigen/Dense>
 #include <stan/math/prim/mat.hpp>
-
+#include <string>
+#include <vector>
 
 namespace utils {
 
-double trunc_normal_rng(
-    double mu, double sigma, double lower, double upper,
-    std::mt19937_64& rng);
+double trunc_normal_rng(double mu, double sigma, double lower, double upper,
+                        std::mt19937_64 &rng);
 
-double trunc_normal_lpdf(double x, double mu, double sigma, double lower, double upper);
+double trunc_normal_lpdf(double x, double mu, double sigma, double lower,
+                         double upper);
 
 Eigen::VectorXd Alr(Eigen::VectorXd x, bool pad_zero = false);
 
@@ -35,17 +34,17 @@ Eigen::MatrixXd removeColumn(Eigen::MatrixXd matrix, unsigned int colToRemove);
 
 Eigen::MatrixXd removeRowColumn(Eigen::MatrixXd matrix, unsigned int toRemove);
 
-std::vector<int> findConnectedComponents(const Eigen::MatrixXd& adjacency);
+void append_by_row(Eigen::MatrixXd *a, const Eigen::MatrixXd &b);
+
+std::vector<int> findConnectedComponents(const Eigen::MatrixXd &adjacency);
 
 void _dephtFirstSearch(const Eigen::MatrixXd &adjacency, int curr_node,
-                       std::vector<bool> *visited, 
-                       std::vector<int> *node2comp,
+                       std::vector<bool> *visited, std::vector<int> *node2comp,
                        int curr_comp);
 
-double matrix_normal_prec_lpdf(
-    Eigen::MatrixXd x, Eigen::MatrixXd m, Eigen::MatrixXd A,
-    Eigen::MatrixXd B);
+double matrix_normal_prec_lpdf(Eigen::MatrixXd x, Eigen::MatrixXd m,
+                               Eigen::MatrixXd A, Eigen::MatrixXd B);
 
-} // namespace utils
+}  // namespace utils
 
-#endif // SRC_UTILS_HPP
+#endif  // SRC_UTILS_HPP
