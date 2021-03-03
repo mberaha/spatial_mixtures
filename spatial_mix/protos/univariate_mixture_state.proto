@@ -13,6 +13,12 @@ message UnivariateMixtureState {
     repeated UnivariateMixtureAtom atoms = 3;
 }
 
+message DependentMixtureAtom {
+  repeated double beta = 1 [packed=true];
+  double stdev = 2;
+}
+
+
 message UnivariateState {
   message GroupParams {
     repeated double weights = 1 [packed=true];
@@ -54,4 +60,24 @@ message HdpState {
   HyperParams hyper_params = 5;
   double alpha = 6;
   double gamma = 7;
+}
+
+message DependentState {
+  message GroupParams {
+    repeated double weights = 1 [packed=true];
+    repeated int32 cluster_allocs = 2 [packed=true];
+  }
+
+
+  int32 num_components = 1;
+
+  repeated DependentMixtureAtom atoms = 2;
+
+  repeated GroupParams groupParams = 3;
+
+  double rho = 4;
+
+  EigenMatrix Sigma = 5;
+
+  repeated double regression_coefficients = 6 [packed=true];
 }
