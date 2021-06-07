@@ -10,7 +10,9 @@ python3 -m scripts.run_amsterdam \
 """
 
 import argparse
+import json
 import multiprocessing
+import os
 import pickle
 import numpy as np
 import pandas as pd
@@ -29,44 +31,20 @@ paramsfile = "spatial_mix/resources/sampler_params.asciipb"
 
 
 def run_sampler(resp, covariates, graph, num_comps,
-                test_y, test_covs, test_areas):
+                base_outfile, mu0=None, a=None, b=None, lam=None):
+
+    other_params = {
+        "num_comps": num_comps, "mu0": mu0, "a": a, "b": b, "lam": lam}
+    other_params = {k: v for k, v in other_params.items() if v is not None}
+    print("running with params")
+    print(json.dumps(other_params))
 
     chains, time = spmix_utils.runSpatialMixtureSampler(
         5000, 5000, 5, graph, paramsfile,
-        resp, covariates, num_comps)
+        resp, covariates, other_params)
 
-    niter = len(chains)
-    preds = np.zeros((niter, len(test_y)))
-
-    numGroups = len(chains[0].groupParams)
-    num_components = chains[0].num_components
-
-    means_chain = np.vstack(
-        [list(map(lambda x: x.mean, state.atoms)) for state in chains])
-
-    stdevs_chain = np.vstack(
-        [list(map(lambda x: x.stdev, state.atoms)) for state in chains])
-
-    regressor_chains = np.vstack(
-        [state.regression_coefficients for state in chains])
-
-    weights_chains = []
-    for g in range(numGroups):
-        weights_chains.append(np.vstack(
-            [state.groupParams[g].weights for state in chains]))
-    weights_chains = np.stack(weights_chains, axis=-1)
-
-    for i in range(niter):
-        means = np.dot(test_covs, regressor_chains[i, :])
-        clusters = np.apply_along_axis(
-            lambda x: np.random.choice(range(num_comps), p=x), -1, 
-            weights_chains[i, :, test_areas.astype(np.int32)])
-        errs = norm.rvs(
-            loc=means_chain[i, clusters], scale=stdevs_chain[i, clusters])
-        preds[i, :] = means + errs
-
-    predmean = np.mean(preds, axis=0)
-    return np.sum((predmean - test_y) ** 2) / len(test_y)
+    outfile = base_outfile.format(mu0, a, b, lam)
+    spmix_utils.writeChains(chains, outfile)
     return 0
 
 
@@ -82,7 +60,7 @@ def groupbyneighbor(df):
     return responses, covariates
 
 
-def _run_wrapper(data, G, num_comps, 
+def _run_wrapper(data, G, num_comps,
                  train_index, test_index):
     traindata = data.loc[train_index]
     testdata = data.loc[test_index]
@@ -112,31 +90,54 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_file", type=str)
     parser.add_argument("--gmat_file", type=str)
-    parser.add_argument("--output_file", type=str)
+    parser.add_argument("--output_folder", type=str)
     parser.add_argument("--njobs", type=int)
 
     args = parser.parse_args()
 
+    base_outfile = os.path.join(
+        args.output_folder, "chains_mu0_{0}_a_{1}_b_{2}_lam{3}.recordio")
 
     df = pd.read_csv(args.input_file)
     G = np.loadtxt(args.gmat_file)
     njobs = args.njobs
-    num_comps = [5, 10, 15, 20]
-    out = {}
-    for ncomp in num_comps:
-        out[ncomp] = run_cross_val(df, G, ncomp, njobs)
 
+    resp, covs = groupbyneighbor(df)
 
-    with open(args.output_file, "wb") as fp:
-        pickle.dump(out, fp)
+    num_comps = [5]
+    mu0s = [0.0]
+    a_s = [0.5, 1.0, 2.0, 3.0]
+    b_s = [0.5, 1.0, 2.0, 3.0]
+    lambdas = [0.05, 0.1, 0.5, 1.0, 2.0]
 
+    q = multiprocessing.Queue()
+    jobs = []
+    curr_jobs = 0
+    for a in a_s:
+        for b in b_s:
+            for lam in lambdas:
+                job = multiprocessing.Process(
+                    target=run_sampler, args=(
+                        resp, covs, G, num_comps[0], base_outfile,
+                        mu0s[0], a, b, lam))
+                jobs.append(job)
+                curr_jobs += 1
 
+                if curr_jobs == args.njobs:
+                    for j in jobs:
+                        j.start()
 
+                    for j in jobs:
+                        j.join()
 
+                    jobs = []
+                    curr_jobs = 0
 
+    for j in jobs:
+        j.join()
 
+    # for ncomp in num_comps:
+    #     out[ncomp] = run_cross_val(df, G, ncomp, njobs)
 
-
-
-
-
+    # with open(args.output_file, "wb") as fp:
+    #     pickle.dump(out, fp)

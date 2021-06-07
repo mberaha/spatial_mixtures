@@ -21,10 +21,18 @@ message SamplerParams {
     EigenMatrix V = 3; // Used only if identity is False
   }
 
+  message LinRegParams {
+    double mean = 1;
+    double prec = 2;
+    double a = 3;
+    double b = 4;
+  }
+
   int32 num_components = 1;
   NormalGammaParams p0_params = 2;
   BetaParams rho_params = 3;
   InverseWishartParams sigma_params = 4;
-
   double mtilde_sigmasq = 5;
+
+  LinRegParams linreg_params = 6;
 }

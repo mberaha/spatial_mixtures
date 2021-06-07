@@ -14,8 +14,6 @@ DependentSpatialMixtureSampler::DependentSpatialMixtureSampler(
   numdata = std::accumulate(samplesPerGroup.begin(), samplesPerGroup.end(), 0);
 
   p_size = X[0].cols();
-  beta0 = Eigen::VectorXd::Zero(p_size);
-  beta_prec = Eigen::MatrixXd::Identity(p_size, p_size) * 0.1;
 }
 
 void DependentSpatialMixtureSampler::init() {
@@ -24,8 +22,12 @@ void DependentSpatialMixtureSampler::init() {
   numComponents = params.num_components();
   mtilde_sigmasq = params.mtilde_sigmasq();
 
-  priorA = params.p0_params().a();
-  priorB = params.p0_params().b();
+  beta0 = Eigen::VectorXd::Ones(p_size) * params.linreg_params().mean();
+  beta_prec =
+      Eigen::MatrixXd::Identity(p_size, p_size) * params.linreg_params().prec();
+
+  priorA = params.linreg_params().a();
+  priorB = params.linreg_params().b();
 
   nu = params.sigma_params().nu();
   if (params.sigma_params().identity())

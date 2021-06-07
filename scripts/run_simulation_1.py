@@ -131,6 +131,7 @@ if __name__ == "__main__":
                 job2.start()
                 jobs.append(job2)
                 curr_jobs += 1
+                
             if curr_jobs == args.njobs:
                 for j in jobs:
                     j.join()

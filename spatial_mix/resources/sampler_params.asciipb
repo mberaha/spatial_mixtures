@@ -18,3 +18,11 @@ sigma_params {
 }
 
 mtilde_sigmasq: 5
+
+
+linreg_params {
+  mean: 0
+  prec: 0.1
+  a: 2
+  b: 2
+}
