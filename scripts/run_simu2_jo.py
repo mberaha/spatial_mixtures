@@ -230,7 +230,7 @@ if __name__ == "__main__":
             weights = get_weights(n, n)
             datas = simulate_data(weights, num_data_per_group)
             true_dens = [
-                eval_density(weights[j], np.array([-5, 0, 5]), np.ones(3), xgrid) for j in ngroups]
+                eval_density(weights[j], np.array([-5, 0, 5]), np.ones(3), xgrid) for j in range(ngroups)]
 
             # first our model, in parallel
             groupedData = []
